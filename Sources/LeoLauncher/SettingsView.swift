@@ -61,19 +61,7 @@ struct SettingsView: View {
     }
 
     private var shortcuts: some View {
-        Form {
-            LabeledContent("主界面") { Text("⌥ Space  或  ⌥⇧ Space") }
-            LabeledContent("搜索优先") { Text("⌃ Space") }
-            LabeledContent("关闭") { Text("Esc 或点击空白") }
-            LabeledContent("搜索") { Text("打开后直接打字，支持拼音") }
-            LabeledContent("打开选中") { Text("Enter") }
-            LabeledContent("排序") { Text("右上角：分类 / 颜色 / 时间") }
-            LabeledContent("URL Scheme") { Text("leolauncher://show") }
-            Text("触控板手势可绑定到 leolauncher://show，兼容 BetterTouchTool / TourBox。")
-                .foregroundStyle(.secondary)
-        }
-        .formStyle(.grouped)
-        .padding()
+        ShortcutsPane(store: store)
     }
 
     private var categories: some View {
@@ -176,6 +164,130 @@ struct SettingsView: View {
         case .model: "模型"
         case .fallback: "待分"
         }
+    }
+}
+
+private struct ShortcutsPane: View {
+    @Bindable var store: LauncherStore
+    @State private var recording: HotKeySlot?
+    @State private var errorText: String?
+
+    var body: some View {
+        Form {
+            Section("全局快捷键") {
+                LabeledContent("主界面") {
+                    HStack(spacing: 8) {
+                        HotKeyRecorderButton(
+                            combo: store.mainHotKey,
+                            isRecording: recording == .main
+                        ) {
+                            toggleRecording(.main)
+                        }
+                        if store.state.mainHotKey != nil, store.state.mainHotKey != .defaultMain {
+                            Button("默认") {
+                                recording = nil
+                                store.resetMainHotKey()
+                                errorText = nil
+                            }
+                        }
+                    }
+                }
+                if store.usesLegacyMainAlternate {
+                    Text("未改时也可用 ⌥⇧ Space。")
+                        .foregroundStyle(.secondary)
+                }
+
+                LabeledContent("搜索优先") {
+                    HStack(spacing: 8) {
+                        HotKeyRecorderButton(
+                            combo: store.searchHotKey,
+                            isRecording: recording == .search
+                        ) {
+                            toggleRecording(.search)
+                        }
+                        if store.state.searchHotKey != nil, store.state.searchHotKey != .defaultSearch {
+                            Button("默认") {
+                                recording = nil
+                                store.resetSearchHotKey()
+                                errorText = nil
+                            }
+                        }
+                    }
+                }
+
+                if let errorText {
+                    Text(errorText)
+                        .foregroundStyle(.red)
+                }
+
+                if store.usesCustomHotKeys {
+                    Button("恢复默认快捷键") {
+                        recording = nil
+                        store.resetHotKeys()
+                        errorText = nil
+                    }
+                }
+
+                Text("点击快捷键，再按下新的组合。Esc 取消录制。")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("启动器内") {
+                LabeledContent("关闭") { Text("Esc 或点击空白") }
+                LabeledContent("搜索") { Text("打开后直接打字，支持拼音") }
+                LabeledContent("打开选中") { Text("Enter") }
+                LabeledContent("排序") { Text("右上角：分类 / 颜色 / 时间") }
+            }
+
+            Section("外部触发") {
+                LabeledContent("URL Scheme") { Text("leolauncher://show") }
+                Text("触控板手势可绑定到 leolauncher://show，兼容 BetterTouchTool / TourBox。")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .background {
+            HotKeyCaptureProbe(isActive: recording != nil, onEvent: handleCapture)
+        }
+        .onDisappear {
+            recording = nil
+        }
+    }
+
+    private func toggleRecording(_ slot: HotKeySlot) {
+        errorText = nil
+        recording = recording == slot ? nil : slot
+    }
+
+    private func handleCapture(_ event: NSEvent) -> Bool {
+        guard recording != nil else { return false }
+        if event.keyCode == HotKeyCombo.escapeKeyCode {
+            recording = nil
+            errorText = nil
+            return true
+        }
+        guard let combo = HotKeyCombo(event: event) else { return true }
+        if let error = combo.validationError {
+            errorText = error
+            return true
+        }
+        let result: String?
+        switch recording {
+        case .main:
+            result = store.updateMainHotKey(combo)
+        case .search:
+            result = store.updateSearchHotKey(combo)
+        case .none:
+            return false
+        }
+        if let result {
+            errorText = result
+            return true
+        }
+        errorText = nil
+        recording = nil
+        return true
     }
 }
 

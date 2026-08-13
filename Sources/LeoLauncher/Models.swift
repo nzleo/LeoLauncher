@@ -147,6 +147,8 @@ struct PersistedState: Codable, Equatable, Sendable {
     var customGreeting: String?
     var inferences: [String: InferredCategory]?
     var recentsClearedAt: Date?
+    var mainHotKey: HotKeyCombo?
+    var searchHotKey: HotKeyCombo?
 
     static let `default` = PersistedState(
         version: 3,
@@ -170,6 +172,8 @@ struct PersistedState: Codable, Equatable, Sendable {
         quotePlacement: QuotePlacement.bottom.rawValue,
         customGreeting: nil,
         inferences: [:],
-        recentsClearedAt: nil
+        recentsClearedAt: nil,
+        mainHotKey: nil,
+        searchHotKey: nil
     )
 }

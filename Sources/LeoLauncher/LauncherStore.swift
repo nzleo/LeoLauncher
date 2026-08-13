@@ -46,6 +46,19 @@ final class LauncherStore {
     var usesCustomGreeting: Bool {
         !(state.customGreeting?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
     }
+    var mainHotKey: HotKeyCombo {
+        state.mainHotKey ?? .defaultMain
+    }
+    var searchHotKey: HotKeyCombo {
+        state.searchHotKey ?? .defaultSearch
+    }
+    var usesLegacyMainAlternate: Bool {
+        let combo = state.mainHotKey ?? .defaultMain
+        return combo == .defaultMain
+    }
+    var usesCustomHotKeys: Bool {
+        state.mainHotKey != nil || state.searchHotKey != nil
+    }
     var currentQuote: FamousQuote {
         let quotes = QuoteBook.all
         guard !quotes.isEmpty else {
@@ -169,6 +182,7 @@ final class LauncherStore {
         Task { await self.enrichUnknownApps() }
         applyDockPolicy()
         applyLoginItem()
+        applyHotKeys()
         if migrated {
             persistNow()
         }
@@ -350,6 +364,74 @@ final class LauncherStore {
         persistSoon()
     }
 
+    @discardableResult
+    func updateMainHotKey(_ combo: HotKeyCombo) -> String? {
+        if let error = combo.validationError { return error }
+        if combo == searchHotKey {
+            return "与搜索快捷键（\(searchHotKey.display)）冲突"
+        }
+        if combo == .defaultMainAlternate, searchHotKey == .defaultMainAlternate {
+            return "与搜索快捷键冲突"
+        }
+        let previous = state.mainHotKey
+        state.mainHotKey = combo
+        if let error = applyHotKeys() {
+            state.mainHotKey = previous
+            _ = applyHotKeys()
+            return error
+        }
+        persistSoon()
+        return nil
+    }
+
+    @discardableResult
+    func updateSearchHotKey(_ combo: HotKeyCombo) -> String? {
+        if let error = combo.validationError { return error }
+        if combo == mainHotKey {
+            return "与主界面快捷键（\(mainHotKey.display)）冲突"
+        }
+        if usesLegacyMainAlternate, combo == .defaultMainAlternate {
+            return "与主界面备用快捷键 ⌥⇧ Space 冲突"
+        }
+        let previous = state.searchHotKey
+        state.searchHotKey = combo
+        if let error = applyHotKeys() {
+            state.searchHotKey = previous
+            _ = applyHotKeys()
+            return error
+        }
+        persistSoon()
+        return nil
+    }
+
+    func resetMainHotKey() {
+        state.mainHotKey = nil
+        _ = applyHotKeys()
+        persistSoon()
+    }
+
+    func resetSearchHotKey() {
+        state.searchHotKey = nil
+        _ = applyHotKeys()
+        persistSoon()
+    }
+
+    func resetHotKeys() {
+        state.mainHotKey = nil
+        state.searchHotKey = nil
+        _ = applyHotKeys()
+        persistSoon()
+    }
+
+    @discardableResult
+    func applyHotKeys() -> String? {
+        HotKeyCenter.shared.apply(
+            main: mainHotKey,
+            search: searchHotKey,
+            includeLegacyMainAlternate: usesLegacyMainAlternate
+        )
+    }
+
     func rotateQuote() {
         let count = QuoteBook.all.count
         guard count > 1 else { return }
@@ -407,6 +489,7 @@ final class LauncherStore {
         applyAppearance()
         loadWallpaper()
         applyDockPolicy()
+        applyHotKeys()
     }
 
     func reclassifyUnknown() {

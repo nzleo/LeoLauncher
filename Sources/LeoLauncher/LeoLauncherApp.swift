@@ -7,10 +7,7 @@ struct LeoLauncherApp: App {
 
     var body: some Scene {
         MenuBarExtra("LeoLauncher", systemImage: "square.grid.2x2") {
-            Button("显示启动器") {
-                appDelegate.showLauncher()
-            }
-            .keyboardShortcut(" ", modifiers: [.option])
+            ShowLauncherMenuButton()
             Button("设置…") {
                 appDelegate.openSettings()
             }
@@ -93,6 +90,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.overlay.show(focusSearch: true)
             default:
                 self.overlay.show()
+            }
+        }
+    }
+}
+
+private struct ShowLauncherMenuButton: View {
+    var body: some View {
+        let combo = LauncherStore.shared.mainHotKey
+        if let key = combo.keyEquivalent {
+            Button("显示启动器") {
+                AppDelegate.shared?.showLauncher()
+            }
+            .keyboardShortcut(key, modifiers: combo.eventModifiers)
+        } else {
+            Button("显示启动器") {
+                AppDelegate.shared?.showLauncher()
             }
         }
     }
