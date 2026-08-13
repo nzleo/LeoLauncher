@@ -131,7 +131,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         launchCounts: [:],
         lastOpened: [:],
         appearance: "system",
-        launchAtLogin: true,
+        launchAtLogin: false,
         showInDock: false
     )
 }

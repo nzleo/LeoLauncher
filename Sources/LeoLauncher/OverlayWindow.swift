@@ -10,11 +10,14 @@ final class OverlayController {
     func bind(store: LauncherStore) {
         self.store = store
         if panel == nil {
-            panel = OverlayPanel()
+            let panel = OverlayPanel()
             let root = OverlayRootView(store: store) { [weak self] in
                 self?.hide()
             }
-            panel?.contentView = NSHostingView(rootView: root)
+            let hosting = NSHostingView(rootView: root)
+            hosting.autoresizingMask = [.width, .height]
+            panel.contentView = hosting
+            self.panel = panel
         }
     }
 
@@ -30,12 +33,11 @@ final class OverlayController {
     func show(focusSearch: Bool = false) {
         guard let panel, let screen = screenForMouse() else { return }
         store?.isVisible = true
-        if focusSearch {
-            store?.query = store?.query ?? ""
-        }
         panel.setFrame(screen.frame, display: true)
+        panel.contentView?.frame = NSRect(origin: .zero, size: screen.frame.size)
         panel.alphaValue = 0
-        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
+        panel.makeKey()
         NSApp.activate(ignoringOtherApps: true)
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.12

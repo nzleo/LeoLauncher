@@ -21,7 +21,8 @@ enum AppScanner {
             ) else { continue }
 
             for url in items where url.pathExtension == "app" {
-                guard let raw = inspect(url) else { continue }
+                let resolved = url.resolvingSymlinksInPath()
+                guard let raw = inspect(resolved) else { continue }
                 if Catalog.skipBundlePrefixes.contains(where: { raw.bundleID.hasPrefix($0) }) {
                     continue
                 }
@@ -36,8 +37,8 @@ enum AppScanner {
     }
 
     static func inspect(_ url: URL) -> RawApp? {
-        let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
-        guard values?.isDirectory == true else { return nil }
+        let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
+        guard values?.isDirectory == true || values?.isPackage == true || url.pathExtension == "app" else { return nil }
 
         let bundle = Bundle(url: url)
         let plist = bundle?.infoDictionary
