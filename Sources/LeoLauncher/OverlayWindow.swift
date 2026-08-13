@@ -56,18 +56,23 @@ final class OverlayController {
         }
     }
 
-    func hide() {
+    func hide(animated: Bool = true) {
         guard let panel else { return }
         store?.hide()
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.1
-            panel.animator().alphaValue = 0
-        }, completionHandler: {
-            Task { @MainActor in
-                panel.orderOut(nil)
-                panel.alphaValue = 1
-            }
-        })
+        if animated, panel.isVisible {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.1
+                panel.animator().alphaValue = 0
+            }, completionHandler: {
+                Task { @MainActor in
+                    panel.orderOut(nil)
+                    panel.alphaValue = 1
+                }
+            })
+        } else {
+            panel.orderOut(nil)
+            panel.alphaValue = 1
+        }
     }
 
     func handleEscape() {

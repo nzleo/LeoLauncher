@@ -27,9 +27,13 @@ struct LeoLauncherApp: App {
             }
         }
         .menuBarExtraStyle(.menu)
-
-        Settings {
-            SettingsView(store: LauncherStore.shared)
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("设置…") {
+                    appDelegate.openSettings()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }
@@ -67,8 +71,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func openSettings() {
+        overlay.hide(animated: false)
         NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        SettingsWindowController.shared.show()
     }
 
     @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent: NSAppleEventDescriptor) {

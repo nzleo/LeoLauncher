@@ -112,11 +112,7 @@ struct OverlayView: View {
     }
 
     private func openSettings() {
-        onDismiss()
-        DispatchQueue.main.async {
-            NSApp.activate(ignoringOtherApps: true)
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        }
+        (NSApp.delegate as? AppDelegate)?.openSettings()
     }
 
     private var masonryBoard: some View {
