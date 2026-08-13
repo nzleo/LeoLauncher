@@ -9,9 +9,17 @@ struct OverlayView: View {
     @State private var focusedCategory: AppCategory?
     @FocusState private var searchFocused: Bool
 
+    private var palette: OverlayPalette { OverlayPalette.make(store.overlayStyle) }
+
     var body: some View {
         ZStack {
-            background
+            OverlayBackdrop(
+                style: store.overlayStyle,
+                wallpaper: store.wallpaperImage,
+                wallpaperOpacity: store.wallpaperOpacity
+            )
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onDismiss)
 
@@ -33,7 +41,8 @@ struct OverlayView: View {
                     .padding(.bottom, 20)
             }
         }
-        .foregroundStyle(Ink.ivory)
+        .foregroundStyle(palette.text)
+        .environment(\.overlayPalette, palette)
         .onAppear { searchFocused = true }
         .onChange(of: store.focusTick) {
             searchFocused = true
@@ -48,31 +57,13 @@ struct OverlayView: View {
         }
     }
 
-    private var background: some View {
-        ZStack {
-            VisualBlur(material: .underWindowBackground, blending: .behindWindow)
-            Ink.paper.opacity(0.72)
-            RadialGradient(
-                colors: [Ink.copper.opacity(0.22), .clear],
-                center: .topLeading,
-                startRadius: 20,
-                endRadius: 640
-            )
-            LinearGradient(
-                colors: [.clear, Color.black.opacity(0.45)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-        .ignoresSafeArea()
-    }
-
     private var chrome: some View {
         HStack(alignment: .center, spacing: 18) {
             Text("Leo")
                 .font(LeoFont.display(34))
                 .italic()
-                .foregroundStyle(Ink.ivory)
+                .foregroundStyle(palette.text)
+                .shadow(color: .black.opacity(0.45), radius: 8, y: 1)
 
             Rectangle()
                 .fill(Ink.copper)
@@ -81,11 +72,11 @@ struct OverlayView: View {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Ink.mute)
+                    .foregroundStyle(palette.mute)
                 TextField("直接打字搜索，支持拼音", text: $store.query)
                     .textFieldStyle(.plain)
                     .font(LeoFont.body(16))
-                    .foregroundStyle(Ink.ivory)
+                    .foregroundStyle(palette.text)
                     .focused($searchFocused)
                     .onSubmit { store.launchSelected() }
             }
@@ -114,7 +105,7 @@ struct OverlayView: View {
         }
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(Ink.line)
+                .fill(palette.line)
                 .frame(height: 1)
                 .offset(y: 12)
         }
@@ -187,7 +178,7 @@ struct OverlayView: View {
             Text(store.sortMode == .usage ? "常用" : "最近")
                 .font(LeoFont.mono(11))
                 .tracking(2)
-                .foregroundStyle(Ink.mute)
+                .foregroundStyle(palette.mute)
             HStack(spacing: 8) {
                 ForEach(store.recents) { app in
                     AppTile(
@@ -215,7 +206,7 @@ struct OverlayView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("\(store.filtered.count) 个结果")
                         .font(LeoFont.mono(11))
-                        .foregroundStyle(Ink.mute)
+                        .foregroundStyle(palette.mute)
                         .tracking(1)
                     LazyVGrid(
                         columns: [GridItem(.adaptive(minimum: store.iconSize + 28), spacing: 14)],
@@ -248,7 +239,7 @@ struct OverlayView: View {
                     ForEach(Array(store.grouped.enumerated()), id: \.element.0) { index, pair in
                         if index > 0 {
                             Text("·")
-                                .foregroundStyle(Ink.mute)
+                                .foregroundStyle(palette.mute)
                                 .padding(.horizontal, 8)
                         }
                         Button {
@@ -257,7 +248,7 @@ struct OverlayView: View {
                         } label: {
                             Text(pair.0.title)
                                 .font(LeoFont.title(13))
-                                .foregroundStyle(focusedCategory == pair.0 ? Ink.copper : Ink.ivory.opacity(0.78))
+                                .foregroundStyle(focusedCategory == pair.0 ? Ink.copper : palette.text.opacity(0.78))
                         }
                         .buttonStyle(.plain)
                         .dropDestination(for: String.self) { items, _ in
@@ -268,16 +259,16 @@ struct OverlayView: View {
             }
             Text(store.iCloudAvailable ? "iCloud" : "本机")
                 .font(LeoFont.mono(10))
-                .foregroundStyle(Ink.mute)
+                .foregroundStyle(palette.mute)
                 .padding(.leading, 16)
             Text("Esc 关闭")
                 .font(LeoFont.mono(10))
-                .foregroundStyle(Ink.mute)
+                .foregroundStyle(palette.mute)
                 .padding(.leading, 12)
         }
         .padding(.top, 10)
         .overlay(alignment: .top) {
-            Rectangle().fill(Ink.line).frame(height: 1)
+            Rectangle().fill(palette.line).frame(height: 1)
         }
     }
 
@@ -347,6 +338,7 @@ struct CategoryColumn: View {
     @Binding var hoveredID: String?
     var highlighted: Bool
     var onLaunch: (AppRecord) -> Void
+    @Environment(\.overlayPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -355,7 +347,7 @@ struct CategoryColumn: View {
                     .font(LeoFont.title(18))
                 Text("\(apps.count)")
                     .font(LeoFont.mono(11))
-                    .foregroundStyle(Ink.mute)
+                    .foregroundStyle(palette.mute)
                 Spacer(minLength: 0)
             }
             .overlay(alignment: .leading) {
@@ -377,10 +369,19 @@ struct CategoryColumn: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(Ink.panel.opacity(highlighted ? 0.96 : 0.82), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background {
+            ZStack {
+                if palette.usesMaterial {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                }
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(highlighted ? Ink.copper.opacity(0.16) : palette.panelFill)
+            }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(highlighted ? Ink.copper.opacity(0.8) : Ink.line, lineWidth: 1)
+                .strokeBorder(highlighted ? Ink.copper.opacity(0.8) : palette.panelStroke, lineWidth: 1)
         }
     }
 }
@@ -439,6 +440,7 @@ struct AppTile: View {
     var hovered: Bool
     var onLaunch: () -> Void
     var onHover: (Bool) -> Void
+    @Environment(\.overlayPalette) private var palette
 
     var body: some View {
         Button(action: onLaunch) {
@@ -448,10 +450,12 @@ struct AppTile: View {
                     .interpolation(.high)
                     .frame(width: size, height: size)
                     .scaleEffect(hovered || selected ? 1.06 : 1)
+                    .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
                 if !hideName {
                     Text(app.name)
                         .font(LeoFont.body(10))
-                        .foregroundStyle(Ink.ivory.opacity(0.78))
+                        .foregroundStyle(palette.text.opacity(0.86))
+                        .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
                         .lineLimit(1)
                         .frame(width: size + 14)
                 }
@@ -460,7 +464,7 @@ struct AppTile: View {
             .background {
                 if selected || hovered {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Ink.copper.opacity(0.14))
+                        .fill(Ink.copper.opacity(0.18))
                 }
             }
         }
@@ -478,20 +482,21 @@ struct ChromeButton: View {
     var selected: Bool
     var help: String
     var action: () -> Void
+    @Environment(\.overlayPalette) private var palette
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(selected ? Ink.paper : Ink.ivory.opacity(0.86))
+                .foregroundStyle(selected ? Ink.paper : palette.text.opacity(0.9))
                 .frame(width: 30, height: 30)
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(selected ? Ink.copper : Ink.panel.opacity(0.9))
+                        .fill(selected ? Ink.copper : palette.chromeIdle)
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(selected ? Ink.copper : Ink.line, lineWidth: 1)
+                        .strokeBorder(selected ? Ink.copper : palette.line, lineWidth: 1)
                 }
         }
         .buttonStyle(.plain)

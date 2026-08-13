@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Bindable var store: LauncherStore
@@ -13,7 +14,7 @@ struct SettingsView: View {
             sync.tabItem { Label("同步", systemImage: "icloud") }
             about.tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 560, height: 480)
+        .frame(width: 620, height: 560)
     }
 
     private var general: some View {
@@ -50,21 +51,7 @@ struct SettingsView: View {
     }
 
     private var appearance: some View {
-        Form {
-            Picker("外观", selection: Binding(
-                get: { store.state.appearance },
-                set: { store.updateAppearance($0) }
-            )) {
-                Text("跟随系统").tag("system")
-                Text("深色").tag("dark")
-                Text("浅色").tag("light")
-            }
-            .pickerStyle(.segmented)
-            Text("三列瀑布流，栏目等宽、自上而下填满，不再用大小不一的玻璃块。拖到分区即可改分类。")
-                .foregroundStyle(.secondary)
-        }
-        .formStyle(.grouped)
-        .padding()
+        AppearancePane(store: store)
     }
 
     private var shortcuts: some View {
@@ -177,6 +164,227 @@ struct SettingsView: View {
         case .itunes: "商店"
         case .model: "模型"
         case .fallback: "待分"
+        }
+    }
+}
+
+private struct AppearancePane: View {
+    @Bindable var store: LauncherStore
+    @State private var pickingWallpaper = false
+
+    var body: some View {
+        Form {
+            Section("启动器背景") {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: 10)], spacing: 10) {
+                    ForEach(OverlayStyle.allCases) { style in
+                        StylePreviewCard(
+                            style: style,
+                            selected: store.overlayStyle == style
+                        ) {
+                            store.updateOverlayStyle(style)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                Text("玻璃和毛玻璃会透出桌面；墨色是夜间深色面板。打开启动器即可立刻看到效果。")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("墙纸") {
+                HStack(alignment: .center, spacing: 14) {
+                    wallpaperThumb
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Button(store.wallpaperImage == nil ? "选择墙纸…" : "更换墙纸…") {
+                                pickingWallpaper = true
+                            }
+                            if store.wallpaperImage != nil {
+                                Button("清除", role: .destructive) {
+                                    store.clearWallpaper()
+                                }
+                            }
+                        }
+                        Text("半透明叠在桌面上，可和上面四种背景一起用。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                if store.wallpaperImage != nil {
+                    LabeledContent("墙纸浓度") {
+                        Slider(
+                            value: Binding(
+                                get: { store.wallpaperOpacity },
+                                set: { store.updateWallpaperOpacity($0) }
+                            ),
+                            in: 0.2...0.9,
+                            step: 0.05
+                        )
+                        .frame(width: 180)
+                        Text("\(Int(store.wallpaperOpacity * 100))%")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                }
+            }
+
+            Section("设置窗口") {
+                Picker("配色", selection: Binding(
+                    get: { store.state.appearance },
+                    set: { store.updateAppearance($0) }
+                )) {
+                    Text("跟随系统").tag("system")
+                    Text("深色").tag("dark")
+                    Text("浅色").tag("light")
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
+        .fileImporter(
+            isPresented: $pickingWallpaper,
+            allowedContentTypes: [.image],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                store.importWallpaper(from: url)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var wallpaperThumb: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.secondary.opacity(0.12))
+            if let image = store.wallpaperImage {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "photo")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 72, height: 48)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1)
+        }
+    }
+}
+
+private struct StylePreviewCard: View {
+    var style: OverlayStyle
+    var selected: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                ZStack(alignment: .bottomLeading) {
+                    preview
+                    VStack(alignment: .leading, spacing: 3) {
+                        Capsule().fill(.white.opacity(0.55)).frame(width: 28, height: 4)
+                        HStack(spacing: 3) {
+                            RoundedRectangle(cornerRadius: 2).fill(.white.opacity(0.35)).frame(width: 10, height: 10)
+                            RoundedRectangle(cornerRadius: 2).fill(.white.opacity(0.28)).frame(width: 10, height: 10)
+                            RoundedRectangle(cornerRadius: 2).fill(.white.opacity(0.2)).frame(width: 10, height: 10)
+                        }
+                    }
+                    .padding(8)
+                }
+                .frame(height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(selected ? Ink.copper : Color.secondary.opacity(0.25), lineWidth: selected ? 2 : 1)
+                }
+
+                Text(style.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(style.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selected ? Ink.copper.opacity(0.12) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(style.subtitle)
+    }
+
+    @ViewBuilder
+    private var preview: some View {
+        switch style {
+        case .glass:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.72, green: 0.84, blue: 0.92).opacity(0.85),
+                    Color(red: 0.55, green: 0.62, blue: 0.78).opacity(0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .overlay(Color.white.opacity(0.28))
+        case .frosted:
+            LinearGradient(
+                colors: [
+                    Color(red: 0.42, green: 0.46, blue: 0.52),
+                    Color(red: 0.22, green: 0.24, blue: 0.28)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .overlay(Color.white.opacity(0.12))
+        case .transparent:
+            Checkerboard()
+                .opacity(0.55)
+                .background(Color(red: 0.35, green: 0.55, blue: 0.42))
+        case .ink:
+            Ink.paper
+                .overlay(
+                    RadialGradient(
+                        colors: [Ink.copper.opacity(0.35), .clear],
+                        center: .topLeading,
+                        startRadius: 4,
+                        endRadius: 70
+                    )
+                )
+        }
+    }
+}
+
+private struct Checkerboard: View {
+    var body: some View {
+        Canvas { context, size in
+            let cell: CGFloat = 7
+            var y: CGFloat = 0
+            var row = 0
+            while y < size.height {
+                var x: CGFloat = 0
+                var col = 0
+                while x < size.width {
+                    if (row + col).isMultiple(of: 2) {
+                        context.fill(
+                            Path(CGRect(x: x, y: y, width: cell, height: cell)),
+                            with: .color(.white.opacity(0.28))
+                        )
+                    }
+                    x += cell
+                    col += 1
+                }
+                y += cell
+                row += 1
+            }
         }
     }
 }

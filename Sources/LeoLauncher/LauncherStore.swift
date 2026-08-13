@@ -18,9 +18,16 @@ final class LauncherStore {
     var isClassifying = false
     var searchIndex = SearchIndex()
     var focusTick = 0
+    var wallpaperImage: NSImage?
 
     var sortMode: SortMode {
         SortMode(rawValue: state.sortMode ?? SortMode.function.rawValue) ?? .function
+    }
+    var overlayStyle: OverlayStyle {
+        OverlayStyle(rawValue: state.overlayStyle ?? OverlayStyle.frosted.rawValue) ?? .frosted
+    }
+    var wallpaperOpacity: Double {
+        min(max(state.wallpaperOpacity ?? 0.55, 0.15), 1)
     }
     var onboardingDone: Bool {
         get { UserDefaults.standard.bool(forKey: "onboardingDone") }
@@ -111,6 +118,7 @@ final class LauncherStore {
         }
         lastSyncedAt = state.updatedAt
         applyAppearance()
+        loadWallpaper()
         refreshApps()
         IconCache.shared.prefetch(urls: visibleApps.map(\.url), pointSize: iconSize)
         Task { await self.enrichUnknownApps() }
@@ -250,6 +258,41 @@ final class LauncherStore {
         persistSoon()
     }
 
+    func updateOverlayStyle(_ style: OverlayStyle) {
+        state.overlayStyle = style.rawValue
+        persistSoon()
+    }
+
+    func updateWallpaperOpacity(_ value: Double) {
+        state.wallpaperOpacity = min(max(value, 0.15), 1)
+        persistSoon()
+    }
+
+    func importWallpaper(from url: URL) {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { return }
+        let ext = ["png", "jpg", "jpeg", "heic", "tif", "tiff", "webp"].contains(url.pathExtension.lowercased())
+            ? url.pathExtension.lowercased()
+            : "png"
+        let name = "wallpaper.\(ext == "jpeg" ? "jpg" : ext)"
+        removeWallpaperFiles()
+        writeWallpaper(data, name: name)
+        state.wallpaperFileName = name
+        if overlayStyle == .ink {
+            state.overlayStyle = OverlayStyle.frosted.rawValue
+        }
+        wallpaperImage = NSImage(data: data)
+        persistSoon()
+    }
+
+    func clearWallpaper() {
+        removeWallpaperFiles()
+        state.wallpaperFileName = nil
+        wallpaperImage = nil
+        persistSoon()
+    }
+
     func requestSearchFocus() {
         focusTick += 1
     }
@@ -270,6 +313,7 @@ final class LauncherStore {
         lastSyncedAt = loaded.updatedAt
         refreshApps()
         applyAppearance()
+        loadWallpaper()
         applyDockPolicy()
     }
 
@@ -330,6 +374,55 @@ final class LauncherStore {
         case "light": NSApp.appearance = NSAppearance(named: .aqua)
         default: NSApp.appearance = nil
         }
+    }
+
+    private func loadWallpaper() {
+        guard let name = state.wallpaperFileName else {
+            wallpaperImage = nil
+            return
+        }
+        for url in wallpaperURLs(name: name) {
+            if FileManager.default.fileExists(atPath: url.path),
+               let image = NSImage(contentsOf: url) {
+                wallpaperImage = image
+                return
+            }
+        }
+        wallpaperImage = nil
+    }
+
+    private func writeWallpaper(_ data: Data, name: String) {
+        for url in wallpaperURLs(name: name) {
+            let directory = url.deletingLastPathComponent()
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    private func removeWallpaperFiles() {
+        let names = [
+            state.wallpaperFileName,
+            "wallpaper.png", "wallpaper.jpg", "wallpaper.heic", "wallpaper.tif", "wallpaper.tiff", "wallpaper.webp"
+        ].compactMap { $0 }
+        for name in Set(names) {
+            for url in wallpaperURLs(name: name) {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+    }
+
+    private func wallpaperURLs(name: String) -> [URL] {
+        var urls: [URL] = []
+        let local = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("LeoLauncher", isDirectory: true)
+            .appendingPathComponent(name)
+        urls.append(local)
+        if FileManager.default.ubiquityIdentityToken != nil {
+            let cloud = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/LeoLauncher/\(name)")
+            urls.append(cloud)
+        }
+        return urls
     }
 
     private func applyDockPolicy() {

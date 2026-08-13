@@ -16,6 +16,8 @@ final class OverlayController {
             }
             let hosting = NSHostingView(rootView: root)
             hosting.autoresizingMask = [.width, .height]
+            hosting.wantsLayer = true
+            hosting.layer?.backgroundColor = NSColor.clear.cgColor
             panel.contentView = hosting
             panel.onEscape = { [weak self] in
                 self?.handleEscape()
