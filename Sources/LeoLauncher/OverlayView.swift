@@ -25,6 +25,7 @@ struct OverlayView: View {
 
             VStack(spacing: 0) {
                 chrome
+                    .zIndex(10)
                     .padding(.horizontal, 36)
                     .padding(.top, 26)
                     .padding(.bottom, 18)
@@ -87,6 +88,7 @@ struct OverlayView: View {
                     .focused($searchFocused)
                     .onSubmit { store.launchSelected() }
             }
+            .frame(maxWidth: 520, alignment: .leading)
 
             Spacer(minLength: 12)
 
@@ -104,6 +106,8 @@ struct OverlayView: View {
                     openSettings()
                 }
             }
+            .fixedSize()
+            .layoutPriority(1)
 
             if store.isClassifying {
                 ProgressView()
@@ -119,7 +123,7 @@ struct OverlayView: View {
     }
 
     private func openSettings() {
-        (NSApp.delegate as? AppDelegate)?.openSettings()
+        AppDelegate.shared?.openSettings()
     }
 
     @ViewBuilder
@@ -323,7 +327,7 @@ struct OverlayView: View {
         case .color:
             store.colorGroups.map { ($0.0.rawValue, $0.0.title, $0.0.tint) }
         case .time:
-            store.timeGroups.map { ($0.0.rawValue, $0.0.title, $0.0.tint) }
+            store.timeGroups.map { ($0.0.id, $0.0.title, $0.0.tint) }
         }
     }
 
@@ -540,22 +544,22 @@ struct ChromeButton: View {
     @Environment(\.overlayPalette) private var palette
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(selected ? Ink.paper : palette.text.opacity(0.9))
-                .frame(width: 30, height: 30)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(selected ? Ink.copper : palette.chromeIdle)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(selected ? Ink.copper : palette.line, lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
-        .help(help)
-        .accessibilityLabel(help)
+        Image(systemName: symbol)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(selected ? Ink.paper : palette.text.opacity(0.9))
+            .frame(width: 32, height: 32)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(selected ? Ink.copper : palette.chromeIdle)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(selected ? Ink.copper : palette.line, lineWidth: 1)
+            }
+            .contentShape(Rectangle())
+            .highPriorityGesture(TapGesture().onEnded { action() })
+            .help(help)
+            .accessibilityLabel(help)
+            .accessibilityAddTraits(.isButton)
     }
 }

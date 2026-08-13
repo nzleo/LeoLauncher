@@ -40,9 +40,11 @@ struct LeoLauncherApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    static private(set) var shared: AppDelegate?
     private let overlay = OverlayController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppDelegate.shared = self
         NSApp.setActivationPolicy(.regular)
         overlay.bind(store: LauncherStore.shared)
         HotKeyCenter.shared.onMain = { [weak self] in
@@ -72,8 +74,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func openSettings() {
         overlay.hide(animated: false)
-        NSApp.activate(ignoringOtherApps: true)
-        SettingsWindowController.shared.show()
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            SettingsWindowController.shared.show()
+        }
     }
 
     @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent: NSAppleEventDescriptor) {

@@ -104,23 +104,22 @@ final class LauncherStore {
     var timeGroups: [(TimeLane, [AppRecord])] {
         var buckets: [TimeLane: [AppRecord]] = [:]
         for app in visibleApps {
-            buckets[timeLane(for: app), default: []].append(app)
+            buckets[installLane(for: app), default: []].append(app)
         }
-        for (lane, items) in buckets {
-            buckets[lane] = items.sorted { lhs, rhs in
-                switch lane {
-                case .installed, .earlier:
-                    if lhs.installedAt != rhs.installedAt { return lhs.installedAt > rhs.installedAt }
-                    return usageThenName(lhs, rhs)
-                default:
-                    let lOpen = state.lastOpened[lhs.bundleID] ?? .distantPast
-                    let rOpen = state.lastOpened[rhs.bundleID] ?? .distantPast
-                    if lOpen != rOpen { return lOpen > rOpen }
-                    return usageThenName(lhs, rhs)
-                }
+        for key in buckets.keys {
+            buckets[key]?.sort { lhs, rhs in
+                if lhs.installedAt != rhs.installedAt { return lhs.installedAt > rhs.installedAt }
+                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
             }
         }
-        return TimeLane.allCases.compactMap { lane in
+        let years = buckets.keys.compactMap { lane -> Int? in
+            if case .year(let year) = lane { return year }
+            return nil
+        }.sorted(by: >)
+        var order: [TimeLane] = [.week, .month, .quarter, .halfYear]
+        order.append(contentsOf: years.map(TimeLane.year))
+        order.append(.unknown)
+        return order.compactMap { lane in
             guard let items = buckets[lane], !items.isEmpty else { return nil }
             return (lane, items)
         }
@@ -398,18 +397,14 @@ final class LauncherStore {
         return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
     }
 
-    private func timeLane(for app: AppRecord) -> TimeLane {
-        let now = Date()
-        if let opened = state.lastOpened[app.bundleID] {
-            if now.timeIntervalSince(opened) < 24 * 60 * 60 { return .justNow }
-            if now.timeIntervalSince(opened) < 7 * 24 * 60 * 60 { return .thisWeek }
-            if now.timeIntervalSince(opened) < 30 * 24 * 60 * 60 {
-                if now.timeIntervalSince(app.installedAt) < 14 * 24 * 60 * 60 { return .installed }
-                return .thisMonth
-            }
-        }
-        if now.timeIntervalSince(app.installedAt) < 14 * 24 * 60 * 60 { return .installed }
-        return .earlier
+    private func installLane(for app: AppRecord) -> TimeLane {
+        guard app.installedAt > Date.distantPast.addingTimeInterval(86_400) else { return .unknown }
+        let days = Date().timeIntervalSince(app.installedAt) / 86_400
+        if days < 7 { return .week }
+        if days < 30 { return .month }
+        if days < 90 { return .quarter }
+        if days < 180 { return .halfYear }
+        return .year(Calendar.current.component(.year, from: app.installedAt))
     }
 
     private func sampleLogoHues() {

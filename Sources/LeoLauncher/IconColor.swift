@@ -44,53 +44,88 @@ enum LogoHue: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-enum TimeLane: String, CaseIterable, Identifiable, Sendable {
-    case justNow
-    case thisWeek
-    case installed
-    case thisMonth
-    case earlier
+enum TimeLane: Hashable, Identifiable, Sendable {
+    case week
+    case month
+    case quarter
+    case halfYear
+    case year(Int)
+    case unknown
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .week: "week"
+        case .month: "month"
+        case .quarter: "quarter"
+        case .halfYear: "halfYear"
+        case .year(let year): "year-\(year)"
+        case .unknown: "unknown"
+        }
+    }
 
     var title: String {
         switch self {
-        case .justNow: "刚刚"
-        case .thisWeek: "本周"
-        case .installed: "新安装"
-        case .thisMonth: "本月"
-        case .earlier: "更早"
+        case .week: "近 7 天"
+        case .month: "近 1 个月"
+        case .quarter: "近 3 个月"
+        case .halfYear: "近半年"
+        case .year(let year): "\(year) 年"
+        case .unknown: "日期未知"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .justNow: "24 小时内打开过"
-        case .thisWeek: "这周还用过"
-        case .installed: "最近装上的"
-        case .thisMonth: "这个月打开过"
-        case .earlier: "按安装时间排列"
+        case .week: "新安装"
+        case .month: "30 天内装上的"
+        case .quarter: "1 到 3 个月前"
+        case .halfYear: "3 到 6 个月前"
+        case .year: "这一年安装"
+        case .unknown: "读不到安装日期"
         }
     }
 
     var tint: Color {
         switch self {
-        case .justNow: Ink.copper
-        case .thisWeek: Color(red: 0.96, green: 0.72, blue: 0.32)
-        case .installed: Color(red: 0.30, green: 0.78, blue: 0.62)
-        case .thisMonth: Color(red: 0.45, green: 0.62, blue: 0.96)
-        case .earlier: Color.white.opacity(0.45)
+        case .week: Ink.copper
+        case .month: Color(red: 0.96, green: 0.72, blue: 0.32)
+        case .quarter: Color(red: 0.30, green: 0.78, blue: 0.62)
+        case .halfYear: Color(red: 0.45, green: 0.62, blue: 0.96)
+        case .year: Color.white.opacity(0.55)
+        case .unknown: Color.white.opacity(0.35)
         }
     }
+}
 
-    var iconScale: CGFloat {
-        switch self {
-        case .justNow: 1.18
-        case .thisWeek: 1.0
-        case .installed: 1.0
-        case .thisMonth: 0.94
-        case .earlier: 0.86
+enum InstallDate {
+    static func caption(_ date: Date) -> String {
+        guard date > Date.distantPast.addingTimeInterval(86_400) else { return "未知" }
+        let calendar = Calendar.current
+        let days = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: date),
+            to: calendar.startOfDay(for: Date())
+        ).day ?? 0
+        if days <= 0 { return "今天" }
+        if days == 1 { return "昨天" }
+        if days < 7 { return "\(days) 天前" }
+        return format(date, includeYear: days >= 180)
+    }
+
+    static func range(_ apps: [AppRecord]) -> String? {
+        let dates = apps.map(\.installedAt).filter { $0 > Date.distantPast.addingTimeInterval(86_400) }
+        guard let newest = dates.max(), let oldest = dates.min() else { return nil }
+        if Calendar.current.isDate(newest, inSameDayAs: oldest) {
+            return format(newest, includeYear: true)
         }
+        return "\(format(oldest, includeYear: false)) – \(format(newest, includeYear: false))"
+    }
+
+    private static func format(_ date: Date, includeYear: Bool) -> String {
+        if includeYear {
+            return date.formatted(.dateTime.year().month().day().locale(Locale(identifier: "zh_CN")))
+        }
+        return date.formatted(.dateTime.month().day().locale(Locale(identifier: "zh_CN")))
     }
 }
 

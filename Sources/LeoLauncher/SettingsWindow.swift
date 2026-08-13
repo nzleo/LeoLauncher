@@ -27,7 +27,7 @@ final class SettingsWindowController {
         window.contentMinSize = NSSize(width: 560, height: 480)
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("LeoLauncherSettings")
-        window.level = .floating
+        window.level = NSWindow.Level(rawValue: OverlayPanel.overlayLevel.rawValue + 1)
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         return window
     }

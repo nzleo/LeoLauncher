@@ -118,7 +118,7 @@ enum SortMode: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .function: "按功能分类"
         case .color: "按图标主色排列"
-        case .time: "按最近使用和安装时间"
+        case .time: "按安装时间排列"
         }
     }
 

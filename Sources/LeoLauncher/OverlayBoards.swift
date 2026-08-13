@@ -118,16 +118,17 @@ struct TimeLaneBoard: View {
                             .frame(maxWidth: .infinity, minHeight: geo.size.height)
                             .contentShape(Rectangle())
                             .onTapGesture(perform: onDismiss)
-                        VStack(spacing: 22) {
-                            ForEach(groups, id: \.0) { lane, apps in
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(groups.enumerated()), id: \.element.0) { index, pair in
                                 TimeLaneSection(
-                                    lane: lane,
-                                    apps: apps,
+                                    lane: pair.0,
+                                    apps: pair.1,
                                     store: store,
                                     hoveredID: $hoveredID,
+                                    isLast: index == groups.count - 1,
                                     onLaunch: onLaunch
                                 )
-                                .id(lane.rawValue)
+                                .id(pair.0.id)
                             }
                         }
                         .padding(.horizontal, 36)
@@ -150,52 +151,128 @@ struct TimeLaneSection: View {
     var apps: [AppRecord]
     var store: LauncherStore
     @Binding var hoveredID: String?
+    var isLast: Bool
     var onLaunch: (AppRecord) -> Void
     @Environment(\.overlayPalette) private var palette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(spacing: 0) {
                 Circle()
                     .fill(lane.tint)
-                    .frame(width: 8, height: 8)
-                    .offset(y: -1)
-                Text(lane.title)
-                    .font(LeoFont.title(lane == .justNow ? 22 : 18))
-                Text(lane.subtitle)
-                    .font(LeoFont.mono(11))
-                    .foregroundStyle(palette.mute)
-                Spacer(minLength: 0)
-                Text("\(apps.count)")
-                    .font(LeoFont.mono(11))
-                    .foregroundStyle(palette.mute)
-            }
-
-            IconFlow(
-                apps: apps,
-                iconSize: store.iconSize * lane.iconScale,
-                hideNames: store.hideAppNames,
-                selectedID: store.selectedID,
-                hoveredID: hoveredID,
-                onLaunch: onLaunch,
-                onHover: { hoveredID = $0 }
-            )
-        }
-        .padding(lane == .justNow ? 20 : 16)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background {
-            ZStack {
-                if palette.usesMaterial {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.ultraThinMaterial)
+                    .frame(width: 11, height: 11)
+                    .shadow(color: lane.tint.opacity(0.65), radius: 6)
+                    .overlay {
+                        Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
+                    }
+                if !isLast {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [lane.tint.opacity(0.55), palette.line],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 1)
+                        .frame(maxHeight: .infinity)
                 }
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(lane.tint.opacity(lane == .justNow ? 0.16 : 0.08))
+            }
+            .frame(width: 11)
+            .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text(lane.title)
+                        .font(LeoFont.title(lane == .week ? 22 : 18))
+                    Text(InstallDate.range(apps) ?? lane.subtitle)
+                        .font(LeoFont.mono(11))
+                        .foregroundStyle(palette.mute)
+                    Spacer(minLength: 0)
+                    Text("\(apps.count)")
+                        .font(LeoFont.mono(11))
+                        .foregroundStyle(palette.mute)
+                }
+
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: store.iconSize + 36), spacing: 10)],
+                    alignment: .leading,
+                    spacing: 12
+                ) {
+                    ForEach(apps) { app in
+                        TimeAppCell(
+                            app: app,
+                            size: store.iconSize,
+                            selected: store.selectedID == app.id,
+                            hovered: hoveredID == app.id,
+                            onLaunch: { onLaunch(app) },
+                            onHover: { hoveredID = $0 ? app.id : nil }
+                        )
+                    }
+                }
+                .padding(.bottom, isLast ? 8 : 28)
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+}
+
+struct TimeAppCell: View {
+    var app: AppRecord
+    var size: CGFloat
+    var selected: Bool
+    var hovered: Bool
+    var onLaunch: () -> Void
+    var onHover: (Bool) -> Void
+    @Environment(\.overlayPalette) private var palette
+
+    var body: some View {
+        Button(action: onLaunch) {
+            VStack(spacing: 5) {
+                Image(nsImage: IconCache.shared.image(for: app.url, pointSize: size))
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: size, height: size)
+                    .scaleEffect(hovered || selected ? 1.06 : 1)
+                    .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                Text(app.name)
+                    .font(LeoFont.body(10))
+                    .foregroundStyle(palette.text.opacity(0.9))
+                    .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
+                    .lineLimit(1)
+                    .frame(width: size + 28)
+                Text(InstallDate.caption(app.installedAt))
+                    .font(LeoFont.mono(9))
+                    .foregroundStyle(Ink.copper.opacity(0.9))
+                    .lineLimit(1)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
+            .background {
+                if selected || hovered {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Ink.copper.opacity(0.16))
+                }
             }
         }
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(lane.tint.opacity(0.32), lineWidth: 1)
+        .buttonStyle(.plain)
+        .help("\(app.name) · \(InstallDate.caption(app.installedAt))")
+        .onHover(perform: onHover)
+        .animation(.easeOut(duration: 0.08), value: hovered)
+        .contextMenu {
+            Button("打开") { onLaunch() }
+            Button("在 Finder 中显示") { LauncherStore.shared.reveal(app) }
+            Divider()
+            Menu("移到分类") {
+                ForEach(AppCategory.boardOrder) { category in
+                    Button(category.title) {
+                        LauncherStore.shared.reassign(app, to: category)
+                    }
+                }
+            }
+            Button("从启动器隐藏", role: .destructive) {
+                LauncherStore.shared.hideApp(app)
+            }
         }
     }
 }
