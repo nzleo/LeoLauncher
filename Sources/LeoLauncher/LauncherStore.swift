@@ -20,8 +20,10 @@ final class LauncherStore {
     var focusTick = 0
     var wallpaperImage: NSImage?
 
+    var logoHues: [String: LogoHue] = [:]
+
     var sortMode: SortMode {
-        SortMode(rawValue: state.sortMode ?? SortMode.function.rawValue) ?? .function
+        SortMode.resolved(state.sortMode)
     }
     var overlayStyle: OverlayStyle {
         OverlayStyle(rawValue: state.overlayStyle ?? OverlayStyle.frosted.rawValue) ?? .frosted
@@ -53,7 +55,6 @@ final class LauncherStore {
 
     var recents: [AppRecord] {
         let opened = state.lastOpened
-        let limit = sortMode == .usage ? 12 : 8
         return visibleApps
             .filter { opened[$0.bundleID] != nil }
             .sorted { lhs, rhs in
@@ -62,7 +63,7 @@ final class LauncherStore {
                 if lCount != rCount { return lCount > rCount }
                 return (opened[lhs.bundleID] ?? .distantPast) > (opened[rhs.bundleID] ?? .distantPast)
             }
-            .prefix(limit)
+            .prefix(8)
             .map { $0 }
     }
 
@@ -76,35 +77,51 @@ final class LauncherStore {
             buckets[app.category, default: []].append(app)
         }
         for key in buckets.keys {
-            buckets[key]?.sort { lhs, rhs in
-                let lCount = state.launchCounts[lhs.bundleID] ?? 0
-                let rCount = state.launchCounts[rhs.bundleID] ?? 0
-                if lCount != rCount { return lCount > rCount }
-                let lOpen = state.lastOpened[lhs.bundleID] ?? .distantPast
-                let rOpen = state.lastOpened[rhs.bundleID] ?? .distantPast
-                if lOpen != rOpen { return lOpen > rOpen }
-                return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+            buckets[key]?.sort(by: usageThenName)
+        }
+        let order = resolvedCategoryOrder()
+        return order.compactMap { category in
+            guard let items = buckets[category], !items.isEmpty else { return nil }
+            return (category, items)
+        }
+    }
+
+    var colorGroups: [(LogoHue, [AppRecord])] {
+        var buckets: [LogoHue: [AppRecord]] = [:]
+        for app in visibleApps {
+            buckets[logoHues[app.bundleID] ?? .gray, default: []].append(app)
+        }
+        for key in buckets.keys {
+            buckets[key]?.sort(by: usageThenName)
+        }
+        return LogoHue.allCases.compactMap { hue in
+            guard let items = buckets[hue], !items.isEmpty else { return nil }
+            return (hue, items)
+        }
+    }
+
+    var timeGroups: [(TimeLane, [AppRecord])] {
+        var buckets: [TimeLane: [AppRecord]] = [:]
+        for app in visibleApps {
+            buckets[timeLane(for: app), default: []].append(app)
+        }
+        for (lane, items) in buckets {
+            buckets[lane] = items.sorted { lhs, rhs in
+                switch lane {
+                case .installed, .earlier:
+                    if lhs.installedAt != rhs.installedAt { return lhs.installedAt > rhs.installedAt }
+                    return usageThenName(lhs, rhs)
+                default:
+                    let lOpen = state.lastOpened[lhs.bundleID] ?? .distantPast
+                    let rOpen = state.lastOpened[rhs.bundleID] ?? .distantPast
+                    if lOpen != rOpen { return lOpen > rOpen }
+                    return usageThenName(lhs, rhs)
+                }
             }
         }
-        let pairs = buckets.compactMap { category, items -> (AppCategory, [AppRecord])? in
-            items.isEmpty ? nil : (category, items)
-        }
-        switch sortMode {
-        case .color:
-            return pairs.sorted { $0.0.colorRank < $1.0.colorRank }
-        case .usage:
-            return pairs.sorted { lhs, rhs in
-                let l = lhs.1.reduce(0) { $0 + (state.launchCounts[$1.bundleID] ?? 0) }
-                let r = rhs.1.reduce(0) { $0 + (state.launchCounts[$1.bundleID] ?? 0) }
-                if l != r { return l > r }
-                return lhs.0.title.localizedStandardCompare(rhs.0.title) == .orderedAscending
-            }
-        case .function:
-            let order = resolvedCategoryOrder()
-            return order.compactMap { category in
-                guard let items = buckets[category], !items.isEmpty else { return nil }
-                return (category, items)
-            }
+        return TimeLane.allCases.compactMap { lane in
+            guard let items = buckets[lane], !items.isEmpty else { return nil }
+            return (lane, items)
         }
     }
 
@@ -143,13 +160,15 @@ final class LauncherStore {
                 category: classified.0,
                 aliases: Catalog.aliases(for: item.bundleID, name: item.name),
                 isObscure: Catalog.obscureSystem.contains(item.bundleID),
-                source: classified.1
+                source: classified.1,
+                installedAt: item.installedAt
             )
         }
         searchIndex.rebuild(apps)
         if selectedID == nil {
             selectedID = (query.isEmpty ? recents.first?.id : filtered.first?.id) ?? visibleApps.first?.id
         }
+        sampleLogoHues()
     }
 
     func toggle() {
@@ -366,6 +385,45 @@ final class LauncherStore {
     private func uniqueByID(_ apps: [AppRecord]) -> [AppRecord] {
         var seen = Set<String>()
         return apps.filter { seen.insert($0.id).inserted }
+    }
+
+    private func usageThenName(_ lhs: AppRecord, _ rhs: AppRecord) -> Bool {
+        let lCount = state.launchCounts[lhs.bundleID] ?? 0
+        let rCount = state.launchCounts[rhs.bundleID] ?? 0
+        if lCount != rCount { return lCount > rCount }
+        let lOpen = state.lastOpened[lhs.bundleID] ?? .distantPast
+        let rOpen = state.lastOpened[rhs.bundleID] ?? .distantPast
+        if lOpen != rOpen { return lOpen > rOpen }
+        return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+    }
+
+    private func timeLane(for app: AppRecord) -> TimeLane {
+        let now = Date()
+        if let opened = state.lastOpened[app.bundleID] {
+            if now.timeIntervalSince(opened) < 24 * 60 * 60 { return .justNow }
+            if now.timeIntervalSince(opened) < 7 * 24 * 60 * 60 { return .thisWeek }
+            if now.timeIntervalSince(opened) < 30 * 24 * 60 * 60 {
+                if now.timeIntervalSince(app.installedAt) < 14 * 24 * 60 * 60 { return .installed }
+                return .thisMonth
+            }
+        }
+        if now.timeIntervalSince(app.installedAt) < 14 * 24 * 60 * 60 { return .installed }
+        return .earlier
+    }
+
+    private func sampleLogoHues() {
+        let jobs = visibleApps.compactMap { app -> (String, URL)? in
+            logoHues[app.bundleID] == nil ? (app.bundleID, app.url) : nil
+        }
+        guard !jobs.isEmpty else { return }
+        Task { @MainActor in
+            for job in jobs {
+                if Task.isCancelled { return }
+                let image = IconCache.shared.image(for: job.1, pointSize: 64)
+                logoHues[job.0] = IconColorSampler.hue(in: image)
+                await Task.yield()
+            }
+        }
     }
 
     private func applyAppearance() {

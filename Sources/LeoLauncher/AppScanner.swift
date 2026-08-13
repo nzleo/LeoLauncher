@@ -16,7 +16,13 @@ enum AppScanner {
         for root in roots {
             guard let items = try? FileManager.default.contentsOfDirectory(
                 at: root,
-                includingPropertiesForKeys: [.isApplicationKey, .isDirectoryKey],
+                includingPropertiesForKeys: [
+                    .isApplicationKey,
+                    .isDirectoryKey,
+                    .addedToDirectoryDateKey,
+                    .creationDateKey,
+                    .contentModificationDateKey
+                ],
                 options: [.skipsHiddenFiles]
             ) else { continue }
 
@@ -60,11 +66,22 @@ enum AppScanner {
         guard !trimmed.isEmpty else { return nil }
         if trimmed.lowercased().contains("uninstaller") { return nil }
 
+        let dates = try? url.resourceValues(forKeys: [
+            .addedToDirectoryDateKey,
+            .creationDateKey,
+            .contentModificationDateKey
+        ])
+        let installedAt = dates?.addedToDirectoryDate
+            ?? dates?.creationDate
+            ?? dates?.contentModificationDate
+            ?? Date.distantPast
+
         return RawApp(
             bundleID: bundleID.isEmpty ? "path.\(url.path.hashValue)" : bundleID,
             name: trimmed,
             url: url,
-            systemCategory: plist?["LSApplicationCategoryType"] as? String
+            systemCategory: plist?["LSApplicationCategoryType"] as? String,
+            installedAt: installedAt
         )
     }
 
@@ -73,5 +90,6 @@ enum AppScanner {
         var name: String
         var url: URL
         var systemCategory: String?
+        var installedAt: Date
     }
 }

@@ -97,6 +97,7 @@ struct AppRecord: Identifiable, Hashable, Sendable {
     var aliases: [String]
     var isObscure: Bool
     var source: ClassificationSource
+    var installedAt: Date
 }
 
 enum ClassificationSource: String, Codable, Sendable {

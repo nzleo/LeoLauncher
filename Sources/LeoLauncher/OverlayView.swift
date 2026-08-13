@@ -6,7 +6,7 @@ struct OverlayView: View {
     var onDismiss: () -> Void
     @State private var hoveredID: String?
     @State private var dropCategory: AppCategory?
-    @State private var focusedCategory: AppCategory?
+    @State private var focusedSection: String?
     @FocusState private var searchFocused: Bool
 
     private var palette: OverlayPalette { OverlayPalette.make(store.overlayStyle) }
@@ -30,7 +30,7 @@ struct OverlayView: View {
                     .padding(.bottom, 18)
 
                 if store.query.isEmpty {
-                    masonryBoard
+                    board
                 } else {
                     searchResults
                 }
@@ -49,6 +49,9 @@ struct OverlayView: View {
         }
         .onChange(of: store.isVisible) { _, visible in
             if visible { searchFocused = true }
+        }
+        .onChange(of: store.sortMode) {
+            focusedSection = nil
         }
         .onExitCommand(perform: handleEscape)
         .focusable()
@@ -115,6 +118,32 @@ struct OverlayView: View {
         (NSApp.delegate as? AppDelegate)?.openSettings()
     }
 
+    @ViewBuilder
+    private var board: some View {
+        switch store.sortMode {
+        case .function:
+            masonryBoard
+        case .color:
+            ColorSpectrumBoard(
+                groups: store.colorGroups,
+                store: store,
+                hoveredID: $hoveredID,
+                focused: $focusedSection,
+                onDismiss: onDismiss,
+                onLaunch: store.launch
+            )
+        case .time:
+            TimeLaneBoard(
+                groups: store.timeGroups,
+                store: store,
+                hoveredID: $hoveredID,
+                focused: $focusedSection,
+                onDismiss: onDismiss,
+                onLaunch: store.launch
+            )
+        }
+    }
+
     private var masonryBoard: some View {
         GeometryReader { geo in
             let columns = Masonry.columnCount(for: geo.size.width)
@@ -142,7 +171,7 @@ struct OverlayView: View {
                                                 highlighted: dropCategory == category,
                                                 onLaunch: store.launch
                                             )
-                                            .id(category)
+                                            .id(category.rawValue)
                                             .dropDestination(for: String.self) { items, _ in
                                                 drop(items, onto: category)
                                             } isTargeted: { hovering in
@@ -159,10 +188,10 @@ struct OverlayView: View {
                         .padding(.bottom, 24)
                     }
                 }
-                .onChange(of: focusedCategory) { _, category in
-                    guard let category else { return }
+                .onChange(of: focusedSection) { _, id in
+                    guard let id else { return }
                     withAnimation(.easeOut(duration: 0.18)) {
-                        proxy.scrollTo(category, anchor: .top)
+                        proxy.scrollTo(id, anchor: .top)
                     }
                 }
             }
@@ -171,7 +200,7 @@ struct OverlayView: View {
 
     private var recentsRail: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(store.sortMode == .usage ? "常用" : "最近")
+            Text("最近")
                 .font(LeoFont.mono(11))
                 .tracking(2)
                 .foregroundStyle(palette.mute)
@@ -231,24 +260,39 @@ struct OverlayView: View {
     private var indexBar: some View {
         HStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(Array(store.grouped.enumerated()), id: \.element.0) { index, pair in
-                        if index > 0 {
+                HStack(spacing: store.sortMode == .color ? 10 : 0) {
+                    ForEach(Array(indexItems.enumerated()), id: \.element.id) { index, item in
+                        if store.sortMode != .color, index > 0 {
                             Text("·")
                                 .foregroundStyle(palette.mute)
                                 .padding(.horizontal, 8)
                         }
                         Button {
                             store.query = ""
-                            focusedCategory = pair.0
+                            focusedSection = item.id
                         } label: {
-                            Text(pair.0.title)
-                                .font(LeoFont.title(13))
-                                .foregroundStyle(focusedCategory == pair.0 ? Ink.copper : palette.text.opacity(0.78))
+                            if store.sortMode == .color {
+                                Circle()
+                                    .fill(item.tint)
+                                    .frame(width: 12, height: 12)
+                                    .overlay {
+                                        if focusedSection == item.id {
+                                            Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1.5)
+                                        }
+                                    }
+                                    .shadow(color: item.tint.opacity(0.6), radius: focusedSection == item.id ? 6 : 0)
+                            } else {
+                                Text(item.title)
+                                    .font(LeoFont.title(13))
+                                    .foregroundStyle(focusedSection == item.id ? Ink.copper : palette.text.opacity(0.78))
+                            }
                         }
                         .buttonStyle(.plain)
+                        .help(item.title)
                         .dropDestination(for: String.self) { items, _ in
-                            drop(items, onto: pair.0)
+                            guard store.sortMode == .function,
+                                  let category = AppCategory(rawValue: item.id) else { return false }
+                            return drop(items, onto: category)
                         }
                     }
                 }
@@ -265,6 +309,17 @@ struct OverlayView: View {
         .padding(.top, 10)
         .overlay(alignment: .top) {
             Rectangle().fill(palette.line).frame(height: 1)
+        }
+    }
+
+    private var indexItems: [(id: String, title: String, tint: Color)] {
+        switch store.sortMode {
+        case .function:
+            store.grouped.map { ($0.0.rawValue, $0.0.title, $0.0.tint) }
+        case .color:
+            store.colorGroups.map { ($0.0.rawValue, $0.0.title, $0.0.tint) }
+        case .time:
+            store.timeGroups.map { ($0.0.rawValue, $0.0.title, $0.0.tint) }
         }
     }
 

@@ -92,33 +92,41 @@ struct SearchIndex: Sendable {
 }
 
 enum SortMode: String, CaseIterable, Identifiable, Sendable {
-    case color
     case function
-    case usage
+    case color
+    case time
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .color: "按颜色"
-        case .function: "按功能"
-        case .usage: "按常用"
+        case .function: "分类"
+        case .color: "颜色"
+        case .time: "时间"
         }
     }
 
     var symbol: String {
         switch self {
-        case .color: "paintpalette"
         case .function: "square.grid.2x2"
-        case .usage: "flame"
+        case .color: "paintpalette"
+        case .time: "clock"
         }
     }
 
     var help: String {
         switch self {
-        case .color: "按分类颜色排序"
-        case .function: "按功能分区排序"
-        case .usage: "常用分类和应用靠前"
+        case .function: "按功能分类"
+        case .color: "按图标主色排列"
+        case .time: "按最近使用和安装时间"
+        }
+    }
+
+    static func resolved(_ raw: String?) -> SortMode {
+        switch raw {
+        case "color": .color
+        case "time", "usage": .time
+        default: .function
         }
     }
 }
