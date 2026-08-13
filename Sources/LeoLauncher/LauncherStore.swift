@@ -71,6 +71,8 @@ final class LauncherStore {
     private var persistTask: Task<Void, Never>?
     @ObservationIgnored
     private var remoteTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var folderWatcher: AppFolderWatcher?
 
     var iconSize: CGFloat { CGFloat(state.iconSize) }
     var hideAppNames: Bool { state.hideAppNames }
@@ -181,6 +183,7 @@ final class LauncherStore {
         applyAppearance()
         loadWallpaper()
         refreshApps()
+        startWatchingAppFolders()
         IconCache.shared.prefetch(urls: visibleApps.map(\.url), pointSize: iconSize)
         Task { await self.enrichUnknownApps() }
         applyDockPolicy()
@@ -189,6 +192,16 @@ final class LauncherStore {
         if migrated {
             persistNow()
         }
+    }
+
+    private func startWatchingAppFolders() {
+        let watcher = AppFolderWatcher {
+            Task { @MainActor in
+                LauncherStore.shared.refreshApps()
+            }
+        }
+        watcher.start(paths: AppScanner.watchedRoots.map(\.path))
+        folderWatcher = watcher
     }
 
     func refreshApps() {

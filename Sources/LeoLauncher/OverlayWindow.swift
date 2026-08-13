@@ -37,6 +37,7 @@ final class OverlayController {
 
     func show(focusSearch: Bool = false) {
         guard let panel, let screen = screenForMouse() else { return }
+        store?.refreshApps()
         store?.isVisible = true
         store?.rotateQuote()
         store?.requestSearchFocus()

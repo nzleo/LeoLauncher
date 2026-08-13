@@ -141,7 +141,7 @@ struct SettingsView: View {
                 .font(LeoFont.title(22))
             Text("空间分区启动器")
                 .foregroundStyle(.secondary)
-            Text("版本 1.0.1")
+            Text("版本 1.0.2")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("每个应用只进一个分区。拖一下就能改。iCloud 跟着走。")
