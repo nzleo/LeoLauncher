@@ -155,7 +155,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         wallpaperFileName: nil,
         wallpaperOpacity: 0.55,
         quoteMode: QuoteMode.both.rawValue,
-        quotePlacement: QuotePlacement.top.rawValue,
+        quotePlacement: QuotePlacement.bottom.rawValue,
         customGreeting: nil
     )
 }

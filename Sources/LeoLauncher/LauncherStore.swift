@@ -37,7 +37,7 @@ final class LauncherStore {
         QuoteMode(rawValue: state.quoteMode ?? QuoteMode.both.rawValue) ?? .both
     }
     var quotePlacement: QuotePlacement {
-        QuotePlacement(rawValue: state.quotePlacement ?? QuotePlacement.top.rawValue) ?? .top
+        QuotePlacement(rawValue: state.quotePlacement ?? QuotePlacement.bottom.rawValue) ?? .bottom
     }
     var greeting: String {
         let custom = state.customGreeting?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

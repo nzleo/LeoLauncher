@@ -5,6 +5,8 @@ struct ColorSpectrumBoard: View {
     var store: LauncherStore
     @Binding var hoveredID: String?
     @Binding var focused: String?
+    var jumpToken: Int
+    var pulseSection: String?
     var onDismiss: () -> Void
     var onLaunch: (AppRecord) -> Void
 
@@ -24,6 +26,7 @@ struct ColorSpectrumBoard: View {
                                     apps: apps,
                                     store: store,
                                     hoveredID: $hoveredID,
+                                    emphasized: pulseSection == hue.rawValue,
                                     onLaunch: onLaunch
                                 )
                                 .id(hue.rawValue)
@@ -33,9 +36,9 @@ struct ColorSpectrumBoard: View {
                         .padding(.bottom, 24)
                     }
                 }
-                .onChange(of: focused) { _, id in
-                    guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
+                .onChange(of: jumpToken) {
+                    guard let id = focused else { return }
+                    withAnimation(.easeOut(duration: 0.22)) {
                         proxy.scrollTo(id, anchor: .top)
                     }
                 }
@@ -49,6 +52,7 @@ struct ColorBand: View {
     var apps: [AppRecord]
     var store: LauncherStore
     @Binding var hoveredID: String?
+    var emphasized: Bool
     var onLaunch: (AppRecord) -> Void
     @Environment(\.overlayPalette) private var palette
 
@@ -82,11 +86,11 @@ struct ColorBand: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(hue.tint.opacity(0.16))
+                .fill(hue.tint.opacity(emphasized ? 0.28 : 0.16))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(hue.tint.opacity(0.38), lineWidth: 1)
+                .strokeBorder(hue.tint.opacity(emphasized ? 0.95 : 0.38), lineWidth: emphasized ? 1.8 : 1)
         }
         .overlay(alignment: .leading) {
             UnevenRoundedRectangle(
@@ -98,6 +102,9 @@ struct ColorBand: View {
             .fill(hue.tint)
             .frame(width: 5)
         }
+        .shadow(color: hue.tint.opacity(emphasized ? 0.5 : 0), radius: emphasized ? 18 : 0)
+        .scaleEffect(emphasized ? 1.02 : 1)
+        .animation(.spring(duration: 0.28, bounce: 0.18), value: emphasized)
     }
 }
 
@@ -106,6 +113,8 @@ struct TimeLaneBoard: View {
     var store: LauncherStore
     @Binding var hoveredID: String?
     @Binding var focused: String?
+    var jumpToken: Int
+    var pulseSection: String?
     var onDismiss: () -> Void
     var onLaunch: (AppRecord) -> Void
 
@@ -126,6 +135,7 @@ struct TimeLaneBoard: View {
                                     store: store,
                                     hoveredID: $hoveredID,
                                     isLast: index == groups.count - 1,
+                                    emphasized: pulseSection == pair.0.id,
                                     onLaunch: onLaunch
                                 )
                                 .id(pair.0.id)
@@ -135,9 +145,9 @@ struct TimeLaneBoard: View {
                         .padding(.bottom, 24)
                     }
                 }
-                .onChange(of: focused) { _, id in
-                    guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
+                .onChange(of: jumpToken) {
+                    guard let id = focused else { return }
+                    withAnimation(.easeOut(duration: 0.22)) {
                         proxy.scrollTo(id, anchor: .top)
                     }
                 }
@@ -152,6 +162,7 @@ struct TimeLaneSection: View {
     var store: LauncherStore
     @Binding var hoveredID: String?
     var isLast: Bool
+    var emphasized: Bool
     var onLaunch: (AppRecord) -> Void
     @Environment(\.overlayPalette) private var palette
 
@@ -160,8 +171,8 @@ struct TimeLaneSection: View {
             VStack(spacing: 0) {
                 Circle()
                     .fill(lane.tint)
-                    .frame(width: 11, height: 11)
-                    .shadow(color: lane.tint.opacity(0.65), radius: 6)
+                    .frame(width: emphasized ? 13 : 11, height: emphasized ? 13 : 11)
+                    .shadow(color: lane.tint.opacity(emphasized ? 0.9 : 0.65), radius: emphasized ? 10 : 6)
                     .overlay {
                         Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
                     }
@@ -185,6 +196,7 @@ struct TimeLaneSection: View {
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(lane.title)
                         .font(LeoFont.title(lane == .week ? 22 : 18))
+                        .foregroundStyle(emphasized ? lane.tint : palette.text)
                     Text(InstallDate.range(apps) ?? lane.subtitle)
                         .font(LeoFont.mono(11))
                         .foregroundStyle(palette.mute)
@@ -214,6 +226,21 @@ struct TimeLaneSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .padding(emphasized ? 10 : 0)
+        .background {
+            if emphasized {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(lane.tint.opacity(0.14))
+            }
+        }
+        .overlay {
+            if emphasized {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(lane.tint.opacity(0.8), lineWidth: 1.4)
+            }
+        }
+        .shadow(color: lane.tint.opacity(emphasized ? 0.4 : 0), radius: emphasized ? 16 : 0)
+        .animation(.spring(duration: 0.28, bounce: 0.18), value: emphasized)
     }
 }
 

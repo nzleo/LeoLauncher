@@ -152,3 +152,37 @@ struct QuoteBanner: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+struct QuoteFooter: View {
+    var quote: FamousQuote
+    var mode: QuoteMode
+    @Environment(\.overlayPalette) private var palette
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if mode == .english || mode == .both {
+                Text("“\(quote.english)”")
+                    .font(LeoFont.display(12))
+                    .italic()
+                    .lineLimit(1)
+            }
+            if mode == .both {
+                Text("·")
+                    .foregroundStyle(palette.mute)
+            }
+            if mode == .chinese || mode == .both {
+                Text(quote.chinese)
+                    .font(LeoFont.body(12))
+                    .lineLimit(1)
+            }
+            Text("— \(quote.author)")
+                .font(LeoFont.mono(10))
+                .foregroundStyle(Ink.copper.opacity(0.88))
+                .lineLimit(1)
+        }
+        .foregroundStyle(palette.text.opacity(0.72))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
+    }
+}

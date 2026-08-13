@@ -7,6 +7,8 @@ struct OverlayView: View {
     @State private var hoveredID: String?
     @State private var dropCategory: AppCategory?
     @State private var focusedSection: String?
+    @State private var jumpToken = 0
+    @State private var pulseSection: String?
     @FocusState private var searchFocused: Bool
 
     private var palette: OverlayPalette { OverlayPalette.make(store.overlayStyle) }
@@ -39,11 +41,6 @@ struct OverlayView: View {
                     searchResults
                 }
 
-                if showsQuote, store.quotePlacement == .bottom {
-                    QuoteBanner(quote: store.currentQuote, mode: store.quoteMode)
-                        .padding(.top, 4)
-                }
-
                 indexBar
                     .padding(.horizontal, 36)
                     .padding(.top, 12)
@@ -65,6 +62,7 @@ struct OverlayView: View {
         }
         .onChange(of: store.sortMode) {
             focusedSection = nil
+            pulseSection = nil
         }
         .onExitCommand(perform: handleEscape)
         .focusable()
@@ -74,24 +72,17 @@ struct OverlayView: View {
     }
 
     private var chrome: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(store.greeting)
-                    .font(LeoFont.display(30))
-                    .italic()
-                    .foregroundStyle(palette.text)
-                    .shadow(color: .black.opacity(0.45), radius: 8, y: 1)
-                    .lineLimit(1)
-                if showsQuote, store.quotePlacement == .top {
-                    QuoteBanner(quote: store.currentQuote, mode: store.quoteMode, compact: true)
-                }
-            }
-            .frame(minWidth: 96, maxWidth: 300, alignment: .leading)
+        HStack(alignment: .center, spacing: 18) {
+            Text(store.greeting)
+                .font(LeoFont.display(30))
+                .italic()
+                .foregroundStyle(palette.text)
+                .shadow(color: .black.opacity(0.45), radius: 8, y: 1)
+                .lineLimit(1)
 
             Rectangle()
                 .fill(Ink.copper)
                 .frame(width: 22, height: 1)
-                .offset(y: -6)
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
@@ -153,6 +144,8 @@ struct OverlayView: View {
                 store: store,
                 hoveredID: $hoveredID,
                 focused: $focusedSection,
+                jumpToken: jumpToken,
+                pulseSection: pulseSection,
                 onDismiss: onDismiss,
                 onLaunch: store.launch
             )
@@ -162,6 +155,8 @@ struct OverlayView: View {
                 store: store,
                 hoveredID: $hoveredID,
                 focused: $focusedSection,
+                jumpToken: jumpToken,
+                pulseSection: pulseSection,
                 onDismiss: onDismiss,
                 onLaunch: store.launch
             )
@@ -193,6 +188,7 @@ struct OverlayView: View {
                                                 store: store,
                                                 hoveredID: $hoveredID,
                                                 highlighted: dropCategory == category,
+                                                emphasized: pulseSection == category.rawValue,
                                                 onLaunch: store.launch
                                             )
                                             .id(category.rawValue)
@@ -212,9 +208,9 @@ struct OverlayView: View {
                         .padding(.bottom, 24)
                     }
                 }
-                .onChange(of: focusedSection) { _, id in
-                    guard let id else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
+                .onChange(of: jumpToken) {
+                    guard let id = focusedSection else { return }
+                    withAnimation(.easeOut(duration: 0.22)) {
                         proxy.scrollTo(id, anchor: .top)
                     }
                 }
@@ -282,57 +278,77 @@ struct OverlayView: View {
     }
 
     private var indexBar: some View {
-        HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: store.sortMode == .color ? 10 : 0) {
-                    ForEach(Array(indexItems.enumerated()), id: \.element.id) { index, item in
-                        if store.sortMode != .color, index > 0 {
-                            Text("·")
-                                .foregroundStyle(palette.mute)
-                                .padding(.horizontal, 8)
-                        }
-                        Button {
-                            store.query = ""
-                            focusedSection = item.id
-                        } label: {
-                            if store.sortMode == .color {
-                                Circle()
-                                    .fill(item.tint)
-                                    .frame(width: 12, height: 12)
-                                    .overlay {
-                                        if focusedSection == item.id {
-                                            Circle().strokeBorder(Color.white.opacity(0.9), lineWidth: 1.5)
-                                        }
-                                    }
-                                    .shadow(color: item.tint.opacity(0.6), radius: focusedSection == item.id ? 6 : 0)
-                            } else {
-                                Text(item.title)
-                                    .font(LeoFont.title(13))
-                                    .foregroundStyle(focusedSection == item.id ? Ink.copper : palette.text.opacity(0.78))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(indexItems, id: \.id) { item in
+                            let active = focusedSection == item.id || pulseSection == item.id
+                            Button {
+                                jump(to: item.id)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(item.tint)
+                                        .frame(width: 8, height: 8)
+                                        .shadow(color: item.tint.opacity(active ? 0.8 : 0), radius: active ? 5 : 0)
+                                    Text(item.title)
+                                        .font(LeoFont.title(13))
+                                }
+                                .foregroundStyle(active ? item.tint : palette.text.opacity(0.8))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(item.tint.opacity(active ? 0.28 : 0.08))
+                                )
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(item.tint.opacity(active ? 0.95 : 0.18), lineWidth: active ? 1.2 : 1)
+                                }
                             }
-                        }
-                        .buttonStyle(.plain)
-                        .help(item.title)
-                        .dropDestination(for: String.self) { items, _ in
-                            guard store.sortMode == .function,
-                                  let category = AppCategory(rawValue: item.id) else { return false }
-                            return drop(items, onto: category)
+                            .buttonStyle(.plain)
+                            .help(item.title)
+                            .dropDestination(for: String.self) { items, _ in
+                                guard store.sortMode == .function,
+                                      let category = AppCategory(rawValue: item.id) else { return false }
+                                return drop(items, onto: category)
+                            }
                         }
                     }
                 }
+                Text(store.iCloudAvailable ? "iCloud" : "本机")
+                    .font(LeoFont.mono(10))
+                    .foregroundStyle(palette.mute)
+                    .padding(.leading, 16)
+                Text("Esc 关闭")
+                    .font(LeoFont.mono(10))
+                    .foregroundStyle(palette.mute)
+                    .padding(.leading, 12)
             }
-            Text(store.iCloudAvailable ? "iCloud" : "本机")
-                .font(LeoFont.mono(10))
-                .foregroundStyle(palette.mute)
-                .padding(.leading, 16)
-            Text("Esc 关闭")
-                .font(LeoFont.mono(10))
-                .foregroundStyle(palette.mute)
-                .padding(.leading, 12)
+
+            if showsQuote {
+                QuoteFooter(quote: store.currentQuote, mode: store.quoteMode)
+            }
         }
         .padding(.top, 10)
         .overlay(alignment: .top) {
             Rectangle().fill(palette.line).frame(height: 1)
+        }
+    }
+
+    private func jump(to id: String) {
+        store.query = ""
+        focusedSection = id
+        pulseSection = id
+        jumpToken += 1
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(1200))
+            if pulseSection == id {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    pulseSection = nil
+                }
+            }
         }
     }
 
@@ -412,14 +428,18 @@ struct CategoryColumn: View {
     var store: LauncherStore
     @Binding var hoveredID: String?
     var highlighted: Bool
+    var emphasized: Bool
     var onLaunch: (AppRecord) -> Void
     @Environment(\.overlayPalette) private var palette
+
+    private var lit: Bool { highlighted || emphasized }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(category.title)
                     .font(LeoFont.title(18))
+                    .foregroundStyle(lit ? category.tint : palette.text)
                 Text("\(apps.count)")
                     .font(LeoFont.mono(11))
                     .foregroundStyle(palette.mute)
@@ -427,7 +447,7 @@ struct CategoryColumn: View {
             }
             .overlay(alignment: .leading) {
                 Rectangle()
-                    .fill(highlighted ? Ink.copper : category.tint.opacity(0.85))
+                    .fill(lit ? category.tint : category.tint.opacity(0.85))
                     .frame(width: 2, height: 14)
                     .offset(x: -10)
             }
@@ -451,13 +471,16 @@ struct CategoryColumn: View {
                         .fill(.ultraThinMaterial)
                 }
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(highlighted ? Ink.copper.opacity(0.16) : palette.panelFill)
+                    .fill(lit ? category.tint.opacity(0.22) : palette.panelFill)
             }
         }
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(highlighted ? Ink.copper.opacity(0.8) : palette.panelStroke, lineWidth: 1)
+                .strokeBorder(lit ? category.tint.opacity(0.95) : palette.panelStroke, lineWidth: lit ? 1.6 : 1)
         }
+        .shadow(color: category.tint.opacity(emphasized ? 0.45 : 0), radius: emphasized ? 18 : 0)
+        .scaleEffect(emphasized ? 1.03 : 1)
+        .animation(.spring(duration: 0.28, bounce: 0.18), value: emphasized)
     }
 }
 

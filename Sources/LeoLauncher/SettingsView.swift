@@ -264,15 +264,7 @@ private struct AppearancePane: View {
                         Text("仅英文").tag(QuoteMode.english)
                     }
                     .pickerStyle(.segmented)
-                    Picker("位置", selection: Binding(
-                        get: { store.quotePlacement },
-                        set: { store.updateQuotePlacement($0) }
-                    )) {
-                        ForEach(QuotePlacement.allCases) { placement in
-                            Text(placement.title).tag(placement)
-                        }
-                    }
-                    Text("顶部会跟在「\(store.greeting)」下面；也可以改到最底下的分类索引上方。每次打开换一句。")
+                    Text("显示在底部分类栏里，不占应用区域。每次打开换一句。")
                         .foregroundStyle(.secondary)
                 }
             }
