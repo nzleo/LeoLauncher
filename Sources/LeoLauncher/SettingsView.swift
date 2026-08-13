@@ -229,6 +229,26 @@ private struct AppearancePane: View {
                 }
             }
 
+            Section("左上角") {
+                LabeledContent("招呼语") {
+                    HStack {
+                        TextField("嗨 \(SystemIdentity.preferredName)", text: Binding(
+                            get: { store.greeting },
+                            set: { store.updateGreeting($0) }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 180)
+                        if store.usesCustomGreeting {
+                            Button("用系统名字") {
+                                store.resetGreeting()
+                            }
+                        }
+                    }
+                }
+                Text("默认读取这台 Mac 的用户全名（不是电脑名，也不是写死的 Leo）。现在识别为「\(SystemIdentity.preferredName)」。")
+                    .foregroundStyle(.secondary)
+            }
+
             Section("世界名言") {
                 Toggle("打开启动器时显示一句名言", isOn: Binding(
                     get: { store.quoteMode != .off },
@@ -252,7 +272,7 @@ private struct AppearancePane: View {
                             Text(placement.title).tag(placement)
                         }
                     }
-                    Text("默认放在搜索栏下方。也可以改到底部分类索引上面。每次打开会换一句。")
+                    Text("顶部会跟在「\(store.greeting)」下面；也可以改到最底下的分类索引上方。每次打开换一句。")
                         .foregroundStyle(.secondary)
                 }
             }

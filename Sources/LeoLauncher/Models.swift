@@ -134,6 +134,7 @@ struct PersistedState: Codable, Equatable, Sendable {
     var wallpaperOpacity: Double?
     var quoteMode: String?
     var quotePlacement: String?
+    var customGreeting: String?
 
     static let `default` = PersistedState(
         version: 2,
@@ -154,6 +155,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         wallpaperFileName: nil,
         wallpaperOpacity: 0.55,
         quoteMode: QuoteMode.both.rawValue,
-        quotePlacement: QuotePlacement.top.rawValue
+        quotePlacement: QuotePlacement.top.rawValue,
+        customGreeting: nil
     )
 }

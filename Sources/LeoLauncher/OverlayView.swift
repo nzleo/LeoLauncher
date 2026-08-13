@@ -33,11 +33,6 @@ struct OverlayView: View {
                     .padding(.top, 26)
                     .padding(.bottom, 18)
 
-                if showsQuote, store.quotePlacement == .top {
-                    QuoteBanner(quote: store.currentQuote, mode: store.quoteMode)
-                        .padding(.bottom, 8)
-                }
-
                 if store.query.isEmpty {
                     board
                 } else {
@@ -79,16 +74,24 @@ struct OverlayView: View {
     }
 
     private var chrome: some View {
-        HStack(alignment: .center, spacing: 18) {
-            Text("Leo")
-                .font(LeoFont.display(34))
-                .italic()
-                .foregroundStyle(palette.text)
-                .shadow(color: .black.opacity(0.45), radius: 8, y: 1)
+        HStack(alignment: .firstTextBaseline, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(store.greeting)
+                    .font(LeoFont.display(30))
+                    .italic()
+                    .foregroundStyle(palette.text)
+                    .shadow(color: .black.opacity(0.45), radius: 8, y: 1)
+                    .lineLimit(1)
+                if showsQuote, store.quotePlacement == .top {
+                    QuoteBanner(quote: store.currentQuote, mode: store.quoteMode, compact: true)
+                }
+            }
+            .frame(minWidth: 96, maxWidth: 300, alignment: .leading)
 
             Rectangle()
                 .fill(Ink.copper)
                 .frame(width: 22, height: 1)
+                .offset(y: -6)
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")

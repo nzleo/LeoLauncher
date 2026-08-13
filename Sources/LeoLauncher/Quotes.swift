@@ -34,16 +34,39 @@ enum QuotePlacement: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .top: "顶部 · 搜索栏下方"
+        case .top: "左上角 · 招呼语下方"
         case .bottom: "底部 · 索引栏上方"
         }
     }
+}
 
-    var help: String {
-        switch self {
-        case .top: "放在搜索栏和内容之间"
-        case .bottom: "放在应用列表和底部分类索引之间"
+enum SystemIdentity {
+    static var preferredName: String {
+        let full = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
+        if full.isEmpty { return fallback }
+
+        let formatter = PersonNameComponentsFormatter()
+        formatter.locale = Locale.current
+        if let components = formatter.personNameComponents(from: full),
+           let given = components.givenName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !given.isEmpty {
+            return given
         }
+
+        let parts = full.split { $0.isWhitespace || $0 == "·" || $0 == "•" }
+        if parts.count >= 2, let first = parts.first, first.allSatisfy({ $0.isASCII && $0.isLetter }) {
+            return String(first)
+        }
+        return full
+    }
+
+    static var fallback: String {
+        let short = NSUserName().trimmingCharacters(in: .whitespacesAndNewlines)
+        return short.isEmpty ? "朋友" : short
+    }
+
+    static var defaultGreeting: String {
+        "嗨 \(preferredName)"
     }
 }
 
@@ -95,33 +118,36 @@ enum QuoteBook {
 struct QuoteBanner: View {
     var quote: FamousQuote
     var mode: QuoteMode
+    var compact = false
     @Environment(\.overlayPalette) private var palette
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(alignment: compact ? .leading : .center, spacing: compact ? 3 : 5) {
             if mode == .english || mode == .both {
                 Text("“\(quote.english)”")
-                    .font(LeoFont.display(mode == .english ? 17 : 15))
+                    .font(LeoFont.display(compact ? 12 : (mode == .english ? 17 : 15)))
                     .italic()
-                    .foregroundStyle(palette.text.opacity(0.92))
-                    .multilineTextAlignment(.center)
-                    .shadow(color: .black.opacity(0.35), radius: 6, y: 1)
+                    .foregroundStyle(palette.text.opacity(compact ? 0.78 : 0.92))
+                    .multilineTextAlignment(compact ? .leading : .center)
+                    .lineLimit(compact ? 2 : 4)
+                    .shadow(color: .black.opacity(compact ? 0 : 0.35), radius: 6, y: 1)
             }
             if mode == .chinese || mode == .both {
                 Text(quote.chinese)
-                    .font(mode == .chinese ? LeoFont.display(17) : LeoFont.body(13))
-                    .italic(mode == .chinese)
-                    .foregroundStyle(mode == .chinese ? palette.text.opacity(0.92) : palette.mute)
-                    .multilineTextAlignment(.center)
+                    .font(compact ? LeoFont.body(12) : (mode == .chinese ? LeoFont.display(17) : LeoFont.body(13)))
+                    .italic(mode == .chinese && !compact)
+                    .foregroundStyle(mode == .chinese && !compact ? palette.text.opacity(0.92) : palette.mute)
+                    .multilineTextAlignment(compact ? .leading : .center)
+                    .lineLimit(compact ? 2 : 4)
             }
             Text("— \(quote.author)")
-                .font(LeoFont.mono(10))
+                .font(LeoFont.mono(compact ? 9 : 10))
                 .foregroundStyle(Ink.copper.opacity(0.88))
                 .tracking(0.6)
         }
-        .frame(maxWidth: 760)
-        .padding(.horizontal, 36)
-        .padding(.vertical, 8)
+        .frame(maxWidth: compact ? 280 : 760, alignment: compact ? .leading : .center)
+        .padding(.horizontal, compact ? 0 : 36)
+        .padding(.vertical, compact ? 0 : 8)
         .allowsHitTesting(false)
         .accessibilityElement(children: .combine)
     }

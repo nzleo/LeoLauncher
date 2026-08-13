@@ -39,6 +39,13 @@ final class LauncherStore {
     var quotePlacement: QuotePlacement {
         QuotePlacement(rawValue: state.quotePlacement ?? QuotePlacement.top.rawValue) ?? .top
     }
+    var greeting: String {
+        let custom = state.customGreeting?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return custom.isEmpty ? SystemIdentity.defaultGreeting : custom
+    }
+    var usesCustomGreeting: Bool {
+        !(state.customGreeting?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
+    }
     var currentQuote: FamousQuote {
         let quotes = QuoteBook.all
         guard !quotes.isEmpty else {
@@ -308,6 +315,21 @@ final class LauncherStore {
 
     func updateQuotePlacement(_ placement: QuotePlacement) {
         state.quotePlacement = placement.rawValue
+        persistSoon()
+    }
+
+    func updateGreeting(_ value: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty || trimmed == SystemIdentity.defaultGreeting {
+            state.customGreeting = nil
+        } else {
+            state.customGreeting = trimmed
+        }
+        persistSoon()
+    }
+
+    func resetGreeting() {
+        state.customGreeting = nil
         persistSoon()
     }
 
