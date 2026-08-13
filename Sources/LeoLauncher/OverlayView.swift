@@ -40,6 +40,10 @@ struct OverlayView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 20)
             }
+            .padding(.top, store.screenInsets.top)
+            .padding(.leading, store.screenInsets.leading)
+            .padding(.bottom, store.screenInsets.bottom)
+            .padding(.trailing, store.screenInsets.trailing)
         }
         .foregroundStyle(palette.text)
         .environment(\.overlayPalette, palette)

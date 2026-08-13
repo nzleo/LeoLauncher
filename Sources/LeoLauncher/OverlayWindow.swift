@@ -39,8 +39,10 @@ final class OverlayController {
         guard let panel, let screen = screenForMouse() else { return }
         store?.isVisible = true
         store?.requestSearchFocus()
+        store?.screenInsets = ScreenChromeInsets.matching(screen)
         panel.setFrame(screen.frame, display: true)
         panel.contentView?.frame = NSRect(origin: .zero, size: screen.frame.size)
+        panel.level = OverlayPanel.overlayLevel
         panel.alphaValue = 0
         panel.orderFrontRegardless()
         panel.makeKey()
@@ -101,8 +103,8 @@ final class OverlayPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        level = .popUpMenu
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        level = OverlayPanel.overlayLevel
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         isFloatingPanel = true
         becomesKeyOnlyIfNeeded = false
         hidesOnDeactivate = false
@@ -110,6 +112,14 @@ final class OverlayPanel: NSPanel {
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isMovable = false
+    }
+
+    static var overlayLevel: NSWindow.Level {
+        let dock = Int(CGWindowLevelForKey(.dockWindow))
+        let popup = Int(CGWindowLevelForKey(.popUpMenuWindow))
+        let overlay = Int(CGWindowLevelForKey(.overlayWindow))
+        let status = Int(CGWindowLevelForKey(.statusWindow))
+        return NSWindow.Level(rawValue: max(dock + 2, popup, overlay, status + 1))
     }
 
     var onEscape: (() -> Void)?
@@ -127,6 +137,26 @@ final class OverlayPanel: NSPanel {
             return
         }
         super.keyDown(with: event)
+    }
+}
+
+struct ScreenChromeInsets: Equatable, Sendable {
+    var top: CGFloat
+    var leading: CGFloat
+    var bottom: CGFloat
+    var trailing: CGFloat
+
+    static let zero = ScreenChromeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+
+    static func matching(_ screen: NSScreen) -> ScreenChromeInsets {
+        let frame = screen.frame
+        let visible = screen.visibleFrame
+        return ScreenChromeInsets(
+            top: max(0, frame.maxY - visible.maxY),
+            leading: max(0, visible.minX - frame.minX),
+            bottom: max(0, visible.minY - frame.minY),
+            trailing: max(0, frame.maxX - visible.maxX)
+        )
     }
 }
 

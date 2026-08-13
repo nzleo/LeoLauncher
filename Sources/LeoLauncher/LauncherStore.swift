@@ -19,6 +19,7 @@ final class LauncherStore {
     var searchIndex = SearchIndex()
     var focusTick = 0
     var wallpaperImage: NSImage?
+    var screenInsets = ScreenChromeInsets.zero
 
     var logoHues: [String: LogoHue] = [:]
 
