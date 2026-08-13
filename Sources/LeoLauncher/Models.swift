@@ -146,6 +146,7 @@ struct PersistedState: Codable, Equatable, Sendable {
     var quotePlacement: String?
     var customGreeting: String?
     var inferences: [String: InferredCategory]?
+    var recentsClearedAt: Date?
 
     static let `default` = PersistedState(
         version: 3,
@@ -168,6 +169,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         quoteMode: QuoteMode.both.rawValue,
         quotePlacement: QuotePlacement.bottom.rawValue,
         customGreeting: nil,
-        inferences: [:]
+        inferences: [:],
+        recentsClearedAt: nil
     )
 }

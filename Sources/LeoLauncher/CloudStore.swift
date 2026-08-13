@@ -66,6 +66,11 @@ actor CloudStore {
             }
         }
         merged.lastOpened = lastOpened
+        let clearedAt = [lhs.recentsClearedAt, rhs.recentsClearedAt].compactMap { $0 }.max()
+        merged.recentsClearedAt = clearedAt
+        if let clearedAt {
+            merged.lastOpened = merged.lastOpened.filter { $0.value > clearedAt }
+        }
         merged.hiddenBundleIDs = Array(Set(lhs.hiddenBundleIDs).union(rhs.hiddenBundleIDs)).sorted()
         return merged
     }

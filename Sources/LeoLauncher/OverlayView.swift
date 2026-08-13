@@ -220,10 +220,29 @@ struct OverlayView: View {
 
     private var recentsRail: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("最近")
-                .font(LeoFont.mono(11))
-                .tracking(2)
-                .foregroundStyle(palette.mute)
+            HStack(alignment: .center, spacing: 10) {
+                Text("最近")
+                    .font(LeoFont.mono(11))
+                    .tracking(2)
+                    .foregroundStyle(palette.mute)
+                Spacer(minLength: 0)
+                Text("清除")
+                    .font(LeoFont.mono(11))
+                    .foregroundStyle(palette.mute)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule(style: .continuous)
+                            .strokeBorder(palette.line, lineWidth: 1)
+                    )
+                    .contentShape(Capsule())
+                    .highPriorityGesture(TapGesture().onEnded {
+                        store.clearRecents()
+                    })
+                    .help("清除最近打开记录")
+                    .accessibilityLabel("清除最近")
+                    .accessibilityAddTraits(.isButton)
+            }
             HStack(spacing: 8) {
                 ForEach(store.recents) { app in
                     AppTile(

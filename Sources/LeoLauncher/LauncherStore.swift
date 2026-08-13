@@ -217,6 +217,12 @@ final class LauncherStore {
         query = ""
     }
 
+    func clearRecents() {
+        state.lastOpened = [:]
+        state.recentsClearedAt = Date()
+        persistNow()
+    }
+
     func launch(_ app: AppRecord) {
         state.launchCounts[app.bundleID, default: 0] += 1
         state.lastOpened[app.bundleID] = Date()
