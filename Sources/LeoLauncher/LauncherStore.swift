@@ -20,6 +20,7 @@ final class LauncherStore {
     var focusTick = 0
     var wallpaperImage: NSImage?
     var screenInsets = ScreenChromeInsets.zero
+    var quoteIndex = 0
 
     var logoHues: [String: LogoHue] = [:]
 
@@ -31,6 +32,19 @@ final class LauncherStore {
     }
     var wallpaperOpacity: Double {
         min(max(state.wallpaperOpacity ?? 0.55, 0.15), 1)
+    }
+    var quoteMode: QuoteMode {
+        QuoteMode(rawValue: state.quoteMode ?? QuoteMode.both.rawValue) ?? .both
+    }
+    var quotePlacement: QuotePlacement {
+        QuotePlacement(rawValue: state.quotePlacement ?? QuotePlacement.top.rawValue) ?? .top
+    }
+    var currentQuote: FamousQuote {
+        let quotes = QuoteBook.all
+        guard !quotes.isEmpty else {
+            return FamousQuote(id: 0, english: "", chinese: "", author: "")
+        }
+        return quotes[quoteIndex % quotes.count]
     }
     var onboardingDone: Bool {
         get { UserDefaults.standard.bool(forKey: "onboardingDone") }
@@ -285,6 +299,26 @@ final class LauncherStore {
     func updateWallpaperOpacity(_ value: Double) {
         state.wallpaperOpacity = min(max(value, 0.15), 1)
         persistSoon()
+    }
+
+    func updateQuoteMode(_ mode: QuoteMode) {
+        state.quoteMode = mode.rawValue
+        persistSoon()
+    }
+
+    func updateQuotePlacement(_ placement: QuotePlacement) {
+        state.quotePlacement = placement.rawValue
+        persistSoon()
+    }
+
+    func rotateQuote() {
+        let count = QuoteBook.all.count
+        guard count > 1 else { return }
+        var next = Int.random(in: 0..<count)
+        if next == quoteIndex {
+            next = (next + 1) % count
+        }
+        quoteIndex = next
     }
 
     func importWallpaper(from url: URL) {

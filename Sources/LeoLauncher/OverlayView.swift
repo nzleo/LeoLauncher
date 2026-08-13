@@ -10,6 +10,9 @@ struct OverlayView: View {
     @FocusState private var searchFocused: Bool
 
     private var palette: OverlayPalette { OverlayPalette.make(store.overlayStyle) }
+    private var showsQuote: Bool {
+        store.quoteMode != .off && store.query.isEmpty
+    }
 
     var body: some View {
         ZStack {
@@ -30,10 +33,20 @@ struct OverlayView: View {
                     .padding(.top, 26)
                     .padding(.bottom, 18)
 
+                if showsQuote, store.quotePlacement == .top {
+                    QuoteBanner(quote: store.currentQuote, mode: store.quoteMode)
+                        .padding(.bottom, 8)
+                }
+
                 if store.query.isEmpty {
                     board
                 } else {
                     searchResults
+                }
+
+                if showsQuote, store.quotePlacement == .bottom {
+                    QuoteBanner(quote: store.currentQuote, mode: store.quoteMode)
+                        .padding(.top, 4)
                 }
 
                 indexBar

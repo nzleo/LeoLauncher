@@ -14,7 +14,7 @@ struct SettingsView: View {
             sync.tabItem { Label("同步", systemImage: "icloud") }
             about.tabItem { Label("关于", systemImage: "info.circle") }
         }
-        .frame(width: 620, height: 560)
+        .frame(width: 620, height: 620)
     }
 
     private var general: some View {
@@ -226,6 +226,34 @@ private struct AppearancePane: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 40, alignment: .trailing)
                     }
+                }
+            }
+
+            Section("世界名言") {
+                Toggle("打开启动器时显示一句名言", isOn: Binding(
+                    get: { store.quoteMode != .off },
+                    set: { store.updateQuoteMode($0 ? .both : .off) }
+                ))
+                if store.quoteMode != .off {
+                    Picker("语言", selection: Binding(
+                        get: { store.quoteMode },
+                        set: { store.updateQuoteMode($0) }
+                    )) {
+                        Text("中英双语").tag(QuoteMode.both)
+                        Text("仅中文").tag(QuoteMode.chinese)
+                        Text("仅英文").tag(QuoteMode.english)
+                    }
+                    .pickerStyle(.segmented)
+                    Picker("位置", selection: Binding(
+                        get: { store.quotePlacement },
+                        set: { store.updateQuotePlacement($0) }
+                    )) {
+                        ForEach(QuotePlacement.allCases) { placement in
+                            Text(placement.title).tag(placement)
+                        }
+                    }
+                    Text("默认放在搜索栏下方。也可以改到底部分类索引上面。每次打开会换一句。")
+                        .foregroundStyle(.secondary)
                 }
             }
 

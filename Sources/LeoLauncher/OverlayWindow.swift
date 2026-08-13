@@ -38,6 +38,7 @@ final class OverlayController {
     func show(focusSearch: Bool = false) {
         guard let panel, let screen = screenForMouse() else { return }
         store?.isVisible = true
+        store?.rotateQuote()
         store?.requestSearchFocus()
         store?.screenInsets = ScreenChromeInsets.matching(screen)
         panel.setFrame(screen.frame, display: true)

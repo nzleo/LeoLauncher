@@ -23,8 +23,8 @@ final class SettingsWindowController {
         let window = NSWindow(contentViewController: hosting)
         window.title = "设置"
         window.styleMask = [.titled, .closable, .miniaturizable]
-        window.setContentSize(NSSize(width: 620, height: 560))
-        window.contentMinSize = NSSize(width: 560, height: 480)
+        window.setContentSize(NSSize(width: 620, height: 620))
+        window.contentMinSize = NSSize(width: 560, height: 520)
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("LeoLauncherSettings")
         window.level = NSWindow.Level(rawValue: OverlayPanel.overlayLevel.rawValue + 1)
