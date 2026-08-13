@@ -140,6 +140,9 @@ enum IconColorSampler {
         let insetX = max(1, width / 8)
         let insetY = max(1, height / 8)
         let step = max(1, min(width, height) / 24)
+        var samples = 0.0
+        var darkSamples = 0.0
+        var chromaSamples = 0.0
 
         for y in stride(from: insetY, to: height - insetY, by: step) {
             for x in stride(from: insetX, to: width - insetX, by: step) {
@@ -154,15 +157,28 @@ enum IconColorSampler {
                 let bucket = classify(hue: hue, saturation: saturation, brightness: brightness)
                 let weight = Double(max(saturation, 0.08) * brightness * alpha)
                 scores[bucket, default: 0] += weight
+                samples += 1
+                if bucket == .gray {
+                    if brightness < 0.45 { darkSamples += 1 }
+                } else {
+                    chromaSamples += 1
+                }
             }
+        }
+
+        // A black icon with a speck of chroma must not lose to sat-weighted highlights.
+        if samples > 0, darkSamples / samples > 0.55, chromaSamples / samples < 0.18 {
+            return .gray
         }
 
         return scores.max(by: { $0.value < $1.value })?.key ?? .gray
     }
 
     private static func classify(hue: CGFloat, saturation: CGFloat, brightness: CGFloat) -> LogoHue {
-        if brightness < 0.12 { return .gray }
-        if saturation < 0.16 { return .gray }
+        // HSV saturation is chroma/value, so near-black cool grays look "highly saturated cyan".
+        if brightness < 0.20 { return .gray }
+        if saturation < 0.18 { return .gray }
+        if saturation * brightness < 0.10 { return .gray }
         let degrees = hue * 360
         switch degrees {
         case 0..<18, 345...360: return .red
