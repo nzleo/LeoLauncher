@@ -17,6 +17,9 @@ final class OverlayController {
             let hosting = NSHostingView(rootView: root)
             hosting.autoresizingMask = [.width, .height]
             panel.contentView = hosting
+            panel.onEscape = { [weak self] in
+                self?.handleEscape()
+            }
             self.panel = panel
         }
     }
@@ -33,6 +36,7 @@ final class OverlayController {
     func show(focusSearch: Bool = false) {
         guard let panel, let screen = screenForMouse() else { return }
         store?.isVisible = true
+        store?.requestSearchFocus()
         panel.setFrame(screen.frame, display: true)
         panel.contentView?.frame = NSRect(origin: .zero, size: screen.frame.size)
         panel.alphaValue = 0
@@ -43,6 +47,10 @@ final class OverlayController {
             context.duration = 0.12
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().alphaValue = 1
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.store?.requestSearchFocus()
+            self?.panel?.makeKey()
         }
     }
 
@@ -60,6 +68,15 @@ final class OverlayController {
         })
     }
 
+    func handleEscape() {
+        if let query = store?.query, !query.isEmpty {
+            store?.query = ""
+            store?.requestSearchFocus()
+        } else {
+            hide()
+        }
+    }
+
     private func screenForMouse() -> NSScreen? {
         let point = NSEvent.mouseLocation
         return NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? NSScreen.main
@@ -70,7 +87,7 @@ final class OverlayPanel: NSPanel {
     init() {
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -88,8 +105,22 @@ final class OverlayPanel: NSPanel {
         isMovable = false
     }
 
+    var onEscape: (() -> Void)?
+
     override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeMain: Bool { true }
+
+    override func cancelOperation(_ sender: Any?) {
+        onEscape?()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 {
+            onEscape?()
+            return
+        }
+        super.keyDown(with: event)
+    }
 }
 
 struct OverlayRootView: View {

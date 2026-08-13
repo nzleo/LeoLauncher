@@ -7,6 +7,7 @@ struct OverlayView: View {
     @State private var hoveredID: String?
     @State private var dropCategory: AppCategory?
     @State private var focusedCategory: AppCategory?
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         ZStack {
@@ -33,6 +34,13 @@ struct OverlayView: View {
             }
         }
         .foregroundStyle(Ink.ivory)
+        .onAppear { searchFocused = true }
+        .onChange(of: store.focusTick) {
+            searchFocused = true
+        }
+        .onChange(of: store.isVisible) { _, visible in
+            if visible { searchFocused = true }
+        }
         .onExitCommand(perform: handleEscape)
         .focusable()
         .onKeyPress { press in
@@ -60,7 +68,7 @@ struct OverlayView: View {
     }
 
     private var chrome: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 22) {
+        HStack(alignment: .center, spacing: 18) {
             Text("Leo")
                 .font(LeoFont.display(34))
                 .italic()
@@ -68,29 +76,41 @@ struct OverlayView: View {
 
             Rectangle()
                 .fill(Ink.copper)
-                .frame(width: 28, height: 1)
-                .offset(y: -6)
+                .frame(width: 22, height: 1)
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Ink.mute)
-                TextField("搜索应用、拼音、分类", text: $store.query)
+                TextField("直接打字搜索，支持拼音", text: $store.query)
                     .textFieldStyle(.plain)
                     .font(LeoFont.body(16))
                     .foregroundStyle(Ink.ivory)
+                    .focused($searchFocused)
+                    .onSubmit { store.launchSelected() }
             }
 
             Spacer(minLength: 12)
+
+            HStack(spacing: 6) {
+                ForEach(SortMode.allCases) { mode in
+                    ChromeButton(
+                        symbol: mode.symbol,
+                        selected: store.sortMode == mode,
+                        help: mode.help
+                    ) {
+                        store.updateSortMode(mode)
+                    }
+                }
+                ChromeButton(symbol: "gearshape", selected: false, help: "设置") {
+                    openSettings()
+                }
+            }
 
             if store.isClassifying {
                 ProgressView()
                     .controlSize(.small)
             }
-            Text(store.iCloudAvailable ? "iCloud" : "本机")
-                .font(LeoFont.mono(11))
-                .foregroundStyle(Ink.mute)
-                .tracking(1.4)
         }
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -100,43 +120,57 @@ struct OverlayView: View {
         }
     }
 
+    private func openSettings() {
+        onDismiss()
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
+    }
+
     private var masonryBoard: some View {
         GeometryReader { geo in
             let columns = Masonry.columnCount(for: geo.size.width)
             let groups = Masonry.distribute(store.grouped, into: columns)
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 22) {
-                        if !store.recents.isEmpty {
-                            recentsRail
-                        }
-                        HStack(alignment: .top, spacing: 18) {
-                            ForEach(Array(groups.enumerated()), id: \.offset) { _, column in
-                                VStack(spacing: 18) {
-                                    ForEach(column, id: \.0) { category, apps in
-                                        CategoryColumn(
-                                            category: category,
-                                            apps: apps,
-                                            store: store,
-                                            hoveredID: $hoveredID,
-                                            highlighted: dropCategory == category,
-                                            onLaunch: store.launch
-                                        )
-                                        .id(category)
-                                        .dropDestination(for: String.self) { items, _ in
-                                            drop(items, onto: category)
-                                        } isTargeted: { hovering in
-                                            dropCategory = hovering ? category : nil
+                    ZStack(alignment: .top) {
+                        Color.clear
+                            .frame(maxWidth: .infinity, minHeight: geo.size.height)
+                            .contentShape(Rectangle())
+                            .onTapGesture(perform: onDismiss)
+                        VStack(alignment: .leading, spacing: 22) {
+                            if !store.recents.isEmpty {
+                                recentsRail
+                            }
+                            HStack(alignment: .top, spacing: 18) {
+                                ForEach(Array(groups.enumerated()), id: \.offset) { _, column in
+                                    VStack(spacing: 18) {
+                                        ForEach(column, id: \.0) { category, apps in
+                                            CategoryColumn(
+                                                category: category,
+                                                apps: apps,
+                                                store: store,
+                                                hoveredID: $hoveredID,
+                                                highlighted: dropCategory == category,
+                                                onLaunch: store.launch
+                                            )
+                                            .id(category)
+                                            .dropDestination(for: String.self) { items, _ in
+                                                drop(items, onto: category)
+                                            } isTargeted: { hovering in
+                                                dropCategory = hovering ? category : nil
+                                            }
                                         }
+                                        Spacer(minLength: 0)
                                     }
-                                    Spacer(minLength: 0)
+                                    .frame(maxWidth: .infinity, alignment: .top)
                                 }
-                                .frame(maxWidth: .infinity, alignment: .top)
                             }
                         }
+                        .padding(.horizontal, 36)
+                        .padding(.bottom, 24)
                     }
-                    .padding(.horizontal, 36)
-                    .padding(.bottom, 24)
                 }
                 .onChange(of: focusedCategory) { _, category in
                     guard let category else { return }
@@ -150,7 +184,7 @@ struct OverlayView: View {
 
     private var recentsRail: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("最近")
+            Text(store.sortMode == .usage ? "常用" : "最近")
                 .font(LeoFont.mono(11))
                 .tracking(2)
                 .foregroundStyle(Ink.mute)
@@ -173,25 +207,37 @@ struct OverlayView: View {
 
     private var searchResults: some View {
         ScrollView {
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: store.iconSize + 28), spacing: 14)],
-                spacing: 14
-            ) {
-                ForEach(store.filtered) { app in
-                    AppTile(
-                        app: app,
-                        size: store.iconSize,
-                        hideName: store.hideAppNames,
-                        selected: store.selectedID == app.id,
-                        hovered: hoveredID == app.id,
-                        onLaunch: { store.launch(app) },
-                        onHover: { hoveredID = $0 ? app.id : nil }
-                    )
-                    .contextMenu { appMenu(app) }
+            ZStack(alignment: .topLeading) {
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 240)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onDismiss)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("\(store.filtered.count) 个结果")
+                        .font(LeoFont.mono(11))
+                        .foregroundStyle(Ink.mute)
+                        .tracking(1)
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: store.iconSize + 28), spacing: 14)],
+                        spacing: 14
+                    ) {
+                        ForEach(store.filtered) { app in
+                            AppTile(
+                                app: app,
+                                size: store.iconSize,
+                                hideName: store.hideAppNames,
+                                selected: store.selectedID == app.id,
+                                hovered: hoveredID == app.id,
+                                onLaunch: { store.launch(app) },
+                                onHover: { hoveredID = $0 ? app.id : nil }
+                            )
+                            .contextMenu { appMenu(app) }
+                        }
+                    }
                 }
+                .padding(.horizontal, 36)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 36)
-            .padding(.bottom, 24)
         }
     }
 
@@ -220,10 +266,14 @@ struct OverlayView: View {
                     }
                 }
             }
-            Text("⌥ Space")
+            Text(store.iCloudAvailable ? "iCloud" : "本机")
                 .font(LeoFont.mono(10))
                 .foregroundStyle(Ink.mute)
                 .padding(.leading, 16)
+            Text("Esc 关闭")
+                .font(LeoFont.mono(10))
+                .foregroundStyle(Ink.mute)
+                .padding(.leading, 12)
         }
         .padding(.top, 10)
         .overlay(alignment: .top) {
@@ -420,5 +470,32 @@ struct AppTile: View {
         .animation(.easeOut(duration: 0.08), value: hovered)
         .animation(.easeOut(duration: 0.08), value: selected)
         .accessibilityLabel(app.name)
+    }
+}
+
+struct ChromeButton: View {
+    var symbol: String
+    var selected: Bool
+    var help: String
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(selected ? Ink.paper : Ink.ivory.opacity(0.86))
+                .frame(width: 30, height: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(selected ? Ink.copper : Ink.panel.opacity(0.9))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(selected ? Ink.copper : Ink.line, lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
     }
 }

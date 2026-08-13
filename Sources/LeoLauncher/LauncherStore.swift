@@ -16,6 +16,12 @@ final class LauncherStore {
     var iCloudAvailable = false
     var lastSyncedAt: Date?
     var isClassifying = false
+    var searchIndex = SearchIndex()
+    var focusTick = 0
+
+    var sortMode: SortMode {
+        SortMode(rawValue: state.sortMode ?? SortMode.function.rawValue) ?? .function
+    }
     var onboardingDone: Bool {
         get { UserDefaults.standard.bool(forKey: "onboardingDone") }
         set { UserDefaults.standard.set(newValue, forKey: "onboardingDone") }
@@ -40,21 +46,24 @@ final class LauncherStore {
 
     var recents: [AppRecord] {
         let opened = state.lastOpened
+        let limit = sortMode == .usage ? 12 : 8
         return visibleApps
             .filter { opened[$0.bundleID] != nil }
             .sorted { lhs, rhs in
-                (opened[lhs.bundleID] ?? .distantPast) > (opened[rhs.bundleID] ?? .distantPast)
+                let lCount = state.launchCounts[lhs.bundleID] ?? 0
+                let rCount = state.launchCounts[rhs.bundleID] ?? 0
+                if lCount != rCount { return lCount > rCount }
+                return (opened[lhs.bundleID] ?? .distantPast) > (opened[rhs.bundleID] ?? .distantPast)
             }
-            .prefix(8)
+            .prefix(limit)
             .map { $0 }
     }
 
     var filtered: [AppRecord] {
-        SearchEngine.ranked(apps: visibleApps, query: query)
+        searchIndex.ranked(query: query, apps: visibleApps)
     }
 
     var grouped: [(AppCategory, [AppRecord])] {
-        let order = resolvedCategoryOrder()
         var buckets: [AppCategory: [AppRecord]] = [:]
         for app in visibleApps {
             buckets[app.category, default: []].append(app)
@@ -64,12 +73,31 @@ final class LauncherStore {
                 let lCount = state.launchCounts[lhs.bundleID] ?? 0
                 let rCount = state.launchCounts[rhs.bundleID] ?? 0
                 if lCount != rCount { return lCount > rCount }
+                let lOpen = state.lastOpened[lhs.bundleID] ?? .distantPast
+                let rOpen = state.lastOpened[rhs.bundleID] ?? .distantPast
+                if lOpen != rOpen { return lOpen > rOpen }
                 return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
             }
         }
-        return order.compactMap { category in
-            guard let items = buckets[category], !items.isEmpty else { return nil }
-            return (category, items)
+        let pairs = buckets.compactMap { category, items -> (AppCategory, [AppRecord])? in
+            items.isEmpty ? nil : (category, items)
+        }
+        switch sortMode {
+        case .color:
+            return pairs.sorted { $0.0.colorRank < $1.0.colorRank }
+        case .usage:
+            return pairs.sorted { lhs, rhs in
+                let l = lhs.1.reduce(0) { $0 + (state.launchCounts[$1.bundleID] ?? 0) }
+                let r = rhs.1.reduce(0) { $0 + (state.launchCounts[$1.bundleID] ?? 0) }
+                if l != r { return l > r }
+                return lhs.0.title.localizedStandardCompare(rhs.0.title) == .orderedAscending
+            }
+        case .function:
+            let order = resolvedCategoryOrder()
+            return order.compactMap { category in
+                guard let items = buckets[category], !items.isEmpty else { return nil }
+                return (category, items)
+            }
         }
     }
 
@@ -110,6 +138,7 @@ final class LauncherStore {
                 source: classified.1
             )
         }
+        searchIndex.rebuild(apps)
         if selectedID == nil {
             selectedID = (query.isEmpty ? recents.first?.id : filtered.first?.id) ?? visibleApps.first?.id
         }
@@ -214,6 +243,15 @@ final class LauncherStore {
         state.launchAtLogin = value
         applyLoginItem()
         persistSoon()
+    }
+
+    func updateSortMode(_ mode: SortMode) {
+        state.sortMode = mode.rawValue
+        persistSoon()
+    }
+
+    func requestSearchFocus() {
+        focusTick += 1
     }
 
     func persistNow() {

@@ -71,8 +71,10 @@ struct SettingsView: View {
         Form {
             LabeledContent("主界面") { Text("⌥ Space  或  ⌥⇧ Space") }
             LabeledContent("搜索优先") { Text("⌃ Space") }
-            LabeledContent("关闭") { Text("Esc") }
+            LabeledContent("关闭") { Text("Esc 或点击空白") }
+            LabeledContent("搜索") { Text("打开后直接打字，支持拼音") }
             LabeledContent("打开选中") { Text("Enter") }
+            LabeledContent("排序") { Text("右上角：颜色 / 功能 / 常用") }
             LabeledContent("URL Scheme") { Text("leolauncher://show") }
             Text("触控板手势可绑定到 leolauncher://show，兼容 BetterTouchTool / TourBox。")
                 .foregroundStyle(.secondary)

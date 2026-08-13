@@ -73,6 +73,15 @@ enum AppCategory: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    static let colorOrder: [AppCategory] = [
+        .design, .photo, .media, .notes, .tasks, .learn, .office,
+        .life, .browser, .dev, .chat, .ai, .system
+    ]
+
+    var colorRank: Int {
+        Self.colorOrder.firstIndex(of: self) ?? 99
+    }
+
     static let boardOrder: [AppCategory] = [
         .ai, .dev, .office, .chat, .media, .system,
         .tasks, .browser, .notes, .photo, .learn, .design, .life
@@ -118,6 +127,7 @@ struct PersistedState: Codable, Equatable, Sendable {
     var appearance: String
     var launchAtLogin: Bool
     var showInDock: Bool
+    var sortMode: String?
 
     static let `default` = PersistedState(
         version: 2,
@@ -132,6 +142,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         lastOpened: [:],
         appearance: "dark",
         launchAtLogin: false,
-        showInDock: true
+        showInDock: true,
+        sortMode: SortMode.function.rawValue
     )
 }
