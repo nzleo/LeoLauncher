@@ -1,17 +1,62 @@
+<div align="center">
+
 # LeoLauncher
 
-**[项目主页](https://nzleo.github.io/LeoLauncher/)** · **[下载 DMG](https://github.com/nzleo/LeoLauncher/releases/latest)**
+**⌥ Space 呼出的空间分区启动器。**
+
+一个应用只进一个分类，布局随 iCloud 走。
+
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](https://github.com/nzleo/LeoLauncher)
+[![最新版本](https://img.shields.io/github/v/release/nzleo/LeoLauncher?label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=2ea44f)](https://github.com/nzleo/LeoLauncher/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+
+**[🌐 项目主页](https://nzleo.github.io/LeoLauncher/)** · **[⬇️ 下载最新版 DMG](https://github.com/nzleo/LeoLauncher/releases/latest)**
+
+同一作者的其他开源：
+[Leo 风扇控制](https://nzleo.github.io/LeoMacFanControl/) ·
+[LeoMDReader](https://nzleo.github.io/LeoMDReader/) ·
+[TourBox × ChatGPT / Codex](https://nzleo.github.io/LeoTourBoxShare/)
+
+</div>
+
+---
 
 macOS 空间分区启动器。系统 Launchpad 变难用了：分类弱、不好找、换机器布局不跟着走。所以做了 LeoLauncher：⌥ Space 呼出，一个应用一个分类，布局随 iCloud。
 
-## 安装
+## 下载与安装
 
-1. 从 [Releases](https://github.com/nzleo/LeoLauncher/releases/latest) 下载 `LeoLauncher-*.dmg`。
-2. 把 App 拖进「应用程序」。
-3. 首次打开：按住 Control 点击 → 打开（未做 Apple 公证，Gatekeeper 拦截是正常的）。
-4. 按 `⌥ Space` 呼出。
+### 第 1 步：下载并拖进「应用程序」
 
-自己从源码打包是次要路径，见下方「开发」。
+**[⬇️ 前往下载页](https://github.com/nzleo/LeoLauncher/releases/latest)**，下载 `LeoLauncher-*.dmg`。
+
+打开 DMG，把 `LeoLauncher.app` 拖到旁边的 Applications（应用程序）文件夹。
+
+> 需要 macOS 14 或更高。
+
+### 第 2 步：首次打开要手动放行（重要）
+
+这个 App 没有购买 Apple 开发者证书（每年 99 美元）、也未做公证，所以**首次打开一定会被系统拦下**，提示「无法打开，因为无法验证开发者」。
+
+这是正常的，不是文件损坏。三种放行方式，任选一种：
+
+**方式 A（推荐，不用命令行）**
+1. 在「应用程序」里找到 LeoLauncher
+2. **按住 Control 键点击**它，选择「打开」
+3. 弹窗里再点一次「打开」
+
+**方式 B**
+
+先双击一次（会被拦），然后打开 **系统设置 ▸ 隐私与安全性**，往下翻找到相关提示，点「仍要打开」。
+
+**方式 C（命令行最快）**
+
+```bash
+xattr -dr com.apple.quarantine /Applications/LeoLauncher.app
+```
+
+### 第 3 步：按 ⌥ Space 呼出
+
+默认快捷键是 **Option + Space**。弹出后直接打字搜索，支持拼音。点空白或 `Esc` 关闭。快捷键可在设置里改。
 
 ## 特点
 
@@ -33,11 +78,13 @@ macOS 空间分区启动器。系统 Launchpad 变难用了：分类弱、不好
 | 打开选中应用 | `Enter` |
 | 触控板 / TourBox | `leolauncher://show` |
 
-## 开发
+## 从源码构建（开发者，可选）
+
+一般用户请直接下载 DMG。需要自己编译时：
 
 ```bash
-make build
-make install
+make dmg       # dist/LeoLauncher-<version>.dmg
+make install   # 装进 /Applications
 make run
 ```
 
