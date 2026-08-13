@@ -1,5 +1,7 @@
 # LeoLauncher
 
+**[项目主页](https://nzleo.github.io/LeoLauncher/)**
+
 macOS 空间分区启动器。为了补上系统 Launchpad 变难用、以及 TagLauncher 性能差、分类会重复、换机器丢失布局的问题。
 
 ## 特点
