@@ -47,6 +47,10 @@ for (filename, size) in sizes {
     try png.write(to: outputDirectory.appendingPathComponent(filename))
 }
 
+private func ink(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat = 1) -> NSColor {
+    NSColor(calibratedRed: r, green: g, blue: b, alpha: a)
+}
+
 func drawIcon(in rect: NSRect) {
     let size = rect.width
     let inset = size * 0.08
@@ -58,18 +62,21 @@ func drawIcon(in rect: NSRect) {
     shadow.fill()
 
     let body = NSBezierPath(roundedRect: card, xRadius: radius, yRadius: radius)
-    NSColor(calibratedRed: 0.09, green: 0.08, blue: 0.07, alpha: 1).setFill()
+    ink(0.09, 0.08, 0.07).setFill()
     body.fill()
 
-    let gradient = NSGradient(
+    NSGradient(
         colors: [
-            NSColor(calibratedRed: 0.22, green: 0.18, blue: 0.14, alpha: 1),
-            NSColor(calibratedRed: 0.08, green: 0.07, blue: 0.06, alpha: 1)
+            ink(0.22, 0.18, 0.14),
+            ink(0.08, 0.07, 0.06)
         ]
-    )
-    gradient?.draw(in: body, angle: 90)
+    )?.draw(in: body, angle: 90)
 
-    let highlight = NSBezierPath(roundedRect: card.insetBy(dx: size * 0.012, dy: size * 0.012), xRadius: radius * 0.9, yRadius: radius * 0.9)
+    let highlight = NSBezierPath(
+        roundedRect: card.insetBy(dx: size * 0.012, dy: size * 0.012),
+        xRadius: radius * 0.9,
+        yRadius: radius * 0.9
+    )
     NSGradient(
         colors: [
             NSColor.white.withAlphaComponent(0.16),
@@ -77,30 +84,92 @@ func drawIcon(in rect: NSRect) {
         ]
     )?.draw(in: highlight, angle: 90)
 
-    NSColor(calibratedRed: 0.82, green: 0.58, blue: 0.34, alpha: 0.55).setStroke()
+    ink(0.82, 0.58, 0.34, 0.55).setStroke()
     body.lineWidth = max(1, size * 0.018)
     body.stroke()
 
-    let inner = card.insetBy(dx: size * 0.18, dy: size * 0.20)
-    let gap = inner.width * 0.12
-    let barWidth = (inner.width - gap * 2) / 3
-    let heights: [CGFloat] = [0.92, 0.68, 0.46]
-    let colors: [NSColor] = [
-        NSColor(calibratedRed: 0.86, green: 0.64, blue: 0.40, alpha: 1),
-        NSColor(calibratedRed: 0.93, green: 0.90, blue: 0.84, alpha: 0.92),
-        NSColor(calibratedRed: 0.72, green: 0.52, blue: 0.32, alpha: 0.88)
+    drawAppTiles(in: card, size: size)
+}
+
+struct AppTile {
+    let scale: CGFloat
+    let fill: NSColor
+    let accent: NSColor
+}
+
+func drawAppTiles(in card: NSRect, size: CGFloat) {
+    let compact = size <= 32
+    let pad = compact ? size * 0.145 : size * 0.168
+    let inner = card.insetBy(dx: pad, dy: pad)
+    let gap = compact ? max(1.2, size * 0.07) : size * 0.058
+    let cellW = (inner.width - gap) / 2
+    let cellH = (inner.height - gap) / 2
+
+    // 2×2 Launchpad-style tiles. Scales are mixed, not ranked, so it cannot read as a chart.
+    let tiles: [AppTile] = [
+        AppTile(scale: compact ? 1.00 : 1.00, fill: ink(0.86, 0.64, 0.40), accent: ink(0.97, 0.88, 0.70)),
+        AppTile(scale: compact ? 0.92 : 0.86, fill: ink(0.93, 0.90, 0.84), accent: ink(1.00, 0.98, 0.94)),
+        AppTile(scale: compact ? 0.94 : 0.90, fill: ink(0.62, 0.46, 0.32), accent: ink(0.82, 0.66, 0.48)),
+        AppTile(scale: compact ? 0.98 : 0.96, fill: ink(0.78, 0.52, 0.30), accent: ink(0.94, 0.76, 0.52))
     ]
 
-    for index in 0..<3 {
-        let barHeight = inner.height * heights[index]
-        let x = inner.minX + CGFloat(index) * (barWidth + gap)
-        let y = inner.minY
-        let barRect = NSRect(x: x, y: y, width: barWidth, height: barHeight)
-        let bar = NSBezierPath(roundedRect: barRect, xRadius: barWidth / 2, yRadius: barWidth / 2)
-        colors[index].setFill()
-        bar.fill()
-        NSColor.white.withAlphaComponent(0.18).setStroke()
-        bar.lineWidth = max(0.5, size * 0.008)
-        bar.stroke()
+    for row in 0..<2 {
+        for col in 0..<2 {
+            let index = row * 2 + col
+            let tile = tiles[index]
+            let cell = NSRect(
+                x: inner.minX + CGFloat(col) * (cellW + gap),
+                y: inner.maxY - CGFloat(row + 1) * cellH - CGFloat(row) * gap,
+                width: cellW,
+                height: cellH
+            )
+            let side = min(cell.width, cell.height) * tile.scale
+            let tileRect = NSRect(
+                x: cell.midX - side / 2,
+                y: cell.midY - side / 2,
+                width: side,
+                height: side
+            )
+            drawTile(tileRect, tile: tile, canvasSize: size)
+        }
     }
+}
+
+func drawTile(_ rect: NSRect, tile: AppTile, canvasSize: CGFloat) {
+    let radius = rect.width * 0.26
+
+    if canvasSize >= 64 {
+        let drop = NSBezierPath(
+            roundedRect: rect.offsetBy(dx: 0, dy: -canvasSize * 0.006),
+            xRadius: radius,
+            yRadius: radius
+        )
+        NSColor.black.withAlphaComponent(0.28).setFill()
+        drop.fill()
+    }
+
+    let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+    tile.fill.setFill()
+    path.fill()
+
+    if canvasSize >= 32 {
+        NSGradient(
+            colors: [
+                tile.accent.withAlphaComponent(0.55),
+                tile.fill.withAlphaComponent(0)
+            ]
+        )?.draw(in: path, angle: 90)
+
+        NSColor.white.withAlphaComponent(0.22).setStroke()
+        path.lineWidth = max(0.5, canvasSize * 0.006)
+        path.stroke()
+    }
+
+    guard canvasSize >= 128 else { return }
+
+    let face = rect.insetBy(dx: rect.width * 0.22, dy: rect.height * 0.22)
+    let faceRadius = face.width * 0.28
+    let facePath = NSBezierPath(roundedRect: face, xRadius: faceRadius, yRadius: faceRadius)
+    tile.accent.withAlphaComponent(0.28).setFill()
+    facePath.fill()
 }
