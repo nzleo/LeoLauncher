@@ -1,8 +1,17 @@
 # LeoLauncher
 
-**[项目主页](https://nzleo.github.io/LeoLauncher/)**
+**[项目主页](https://nzleo.github.io/LeoLauncher/)** · **[下载 DMG](https://github.com/nzleo/LeoLauncher/releases/latest)**
 
 macOS 空间分区启动器。系统 Launchpad 变难用了：分类弱、不好找、换机器布局不跟着走。所以做了 LeoLauncher：⌥ Space 呼出，一个应用一个分类，布局随 iCloud。
+
+## 安装
+
+1. 从 [Releases](https://github.com/nzleo/LeoLauncher/releases/latest) 下载 `LeoLauncher-*.dmg`。
+2. 把 App 拖进「应用程序」。
+3. 首次打开：按住 Control 点击 → 打开（未做 Apple 公证，Gatekeeper 拦截是正常的）。
+4. 按 `⌥ Space` 呼出。
+
+自己从源码打包是次要路径，见下方「开发」。
 
 ## 特点
 

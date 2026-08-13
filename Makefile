@@ -1,13 +1,18 @@
 APP_NAME := LeoLauncher
 CONFIGURATION ?= release
 
-.PHONY: build app install run clean
+.PHONY: build app dmg release install run clean
 
 build:
 	swift build -c $(CONFIGURATION)
 
 app: build
 	./Scripts/package-app.sh
+
+dmg:
+	./Scripts/make-dmg.sh
+
+release: dmg
 
 install: app
 	rm -rf "/Applications/$(APP_NAME).app"
