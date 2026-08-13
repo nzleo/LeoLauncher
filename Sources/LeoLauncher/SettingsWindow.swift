@@ -14,8 +14,27 @@ final class SettingsWindowController {
         guard let window else { return }
         NSApp.activate(ignoringOtherApps: true)
         place(window)
+        syncAppearance()
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
+    }
+
+    func makeKeyForCapture() {
+        guard let window else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func syncAppearance() {
+        guard let window else { return }
+        switch LauncherStore.shared.state.appearance {
+        case "dark":
+            window.appearance = NSAppearance(named: .darkAqua)
+        case "light":
+            window.appearance = NSAppearance(named: .aqua)
+        default:
+            window.appearance = nil
+        }
     }
 
     private func makeWindow() -> NSWindow {

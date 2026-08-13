@@ -150,8 +150,10 @@ struct PersistedState: Codable, Equatable, Sendable {
     var mainHotKey: HotKeyCombo?
     var searchHotKey: HotKeyCombo?
 
+    static let currentVersion = 4
+
     static let `default` = PersistedState(
-        version: 3,
+        version: currentVersion,
         updatedAt: Date(),
         overrides: [:],
         hiddenBundleIDs: [],
@@ -161,7 +163,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         categoryOrder: AppCategory.boardOrder.map(\.rawValue),
         launchCounts: [:],
         lastOpened: [:],
-        appearance: "dark",
+        appearance: "system",
         launchAtLogin: false,
         showInDock: true,
         sortMode: SortMode.function.rawValue,

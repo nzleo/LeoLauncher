@@ -45,9 +45,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         overlay.bind(store: LauncherStore.shared)
         HotKeyCenter.shared.onMain = { [weak self] in
+            guard !HotKeyCenter.shared.isCapturing else { return }
             self?.overlay.toggle()
         }
         HotKeyCenter.shared.onSearch = { [weak self] in
+            guard !HotKeyCenter.shared.isCapturing else { return }
             self?.overlay.show(focusSearch: true)
         }
         HotKeyCenter.shared.registerDefaults()
@@ -77,10 +79,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func dismissOverlayForHotKeyCapture() {
+        overlay.hide(animated: false)
+    }
+
     @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent: NSAppleEventDescriptor) {
         guard let raw = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
               let url = URL(string: raw) else { return }
         Task { @MainActor in
+            guard !HotKeyCenter.shared.isCapturing else { return }
             switch url.host {
             case "search":
                 if let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?
@@ -97,16 +104,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 private struct ShowLauncherMenuButton: View {
     var body: some View {
-        let combo = LauncherStore.shared.mainHotKey
-        if let key = combo.keyEquivalent {
-            Button("显示启动器") {
-                AppDelegate.shared?.showLauncher()
-            }
-            .keyboardShortcut(key, modifiers: combo.eventModifiers)
-        } else {
-            Button("显示启动器") {
-                AppDelegate.shared?.showLauncher()
-            }
+        Button("显示启动器") {
+            AppDelegate.shared?.showLauncher()
         }
     }
 }

@@ -76,8 +76,9 @@ LeoLauncher — 安装说明 / Install
 
 第 3 步：呼出启动器
 ----------------------------------------
-默认快捷键是 Option + Space（⌥ Space）。弹出后直接打字搜索，支持拼音。
+默认快捷键是 Option + Shift + Space（⌥⇧ Space）。弹出后直接打字搜索，支持拼音。
 点空白或按 Esc 关闭。快捷键可在设置里改。
+搜索优先：Option + Control + Space（⌥⌃ Space）。
 
 
 English
@@ -86,7 +87,8 @@ English
 2. First launch is blocked by Gatekeeper (unsigned / not notarized). That is expected.
    Control-click the app → Open → Open again.
    Or: xattr -dr com.apple.quarantine /Applications/LeoLauncher.app
-3. Press Option-Space (⌥ Space) to show the launcher.
+3. Press Option-Shift-Space (⌥⇧ Space) to show the launcher.
+   Search-first: Option-Control-Space (⌥⌃ Space).
 
 
 项目主页 / Homepage

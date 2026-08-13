@@ -6,9 +6,13 @@ struct HotKeyCombo: Codable, Equatable, Hashable, Sendable {
     var keyCode: UInt32
     var modifiers: UInt32
 
-    static let defaultMain = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey))
-    static let defaultMainAlternate = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey | shiftKey))
-    static let defaultSearch = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(controlKey))
+    /// Option + Shift + Space. Carbon cannot tell left Shift (keyCode 56) from right (60).
+    static let defaultMain = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey | shiftKey))
+    /// Option + Control + Space.
+    static let defaultSearch = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey | controlKey))
+    /// Pre-1.0.1 factory defaults, used only to migrate users who never customized.
+    static let legacyDefaultMain = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey))
+    static let legacyDefaultSearch = HotKeyCombo(keyCode: UInt32(kVK_Space), modifiers: UInt32(controlKey))
     static let escapeKeyCode: UInt16 = UInt16(kVK_Escape)
 
     init(keyCode: UInt32, modifiers: UInt32) {
@@ -28,7 +32,10 @@ struct HotKeyCombo: Codable, Equatable, Hashable, Sendable {
         let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
         var carbon: UInt32 = 0
         if flags.contains(.command) { carbon |= UInt32(cmdKey) }
-        if flags.contains(.shift) { carbon |= UInt32(shiftKey) }
+        if flags.contains(.shift) {
+            // RegisterEventHotKey only documents shiftKey (not rightShiftKey), so either Shift matches.
+            carbon |= UInt32(shiftKey)
+        }
         if flags.contains(.option) { carbon |= UInt32(optionKey) }
         if flags.contains(.control) { carbon |= UInt32(controlKey) }
         self.init(keyCode: UInt32(event.keyCode), modifiers: carbon)
@@ -135,42 +142,60 @@ final class HotKeyCenter: @unchecked Sendable {
     private var handler: EventHandlerRef?
     private var refs: [UInt32: EventHotKeyRef] = [:]
     private var applied: Applied?
+    private var capturing = false
     private let signature: OSType = 0x4C4C484B // 'LLHK'
 
     private struct Applied {
         var main: HotKeyCombo
         var search: HotKeyCombo
-        var includeLegacyMainAlternate: Bool
     }
 
+    var isCapturing: Bool { capturing }
+
     func registerDefaults() {
-        _ = apply(main: .defaultMain, search: .defaultSearch, includeLegacyMainAlternate: true)
+        _ = apply(main: .defaultMain, search: .defaultSearch)
+    }
+
+    func beginCapture() {
+        capturing = true
+        unregisterAll()
+    }
+
+    func endCapture() {
+        capturing = false
+        if let applied {
+            _ = registerNow(main: applied.main, search: applied.search)
+        }
     }
 
     @discardableResult
-    func apply(main: HotKeyCombo, search: HotKeyCombo, includeLegacyMainAlternate: Bool) -> String? {
+    func apply(main: HotKeyCombo, search: HotKeyCombo) -> String? {
         installHandlerIfNeeded()
         let previous = applied
-        if let error = registerNow(main: main, search: search, includeLegacyMainAlternate: includeLegacyMainAlternate) {
+        if let error = registerNow(main: main, search: search) {
             if let previous {
-                _ = registerNow(
-                    main: previous.main,
-                    search: previous.search,
-                    includeLegacyMainAlternate: previous.includeLegacyMainAlternate
-                )
+                _ = registerNow(main: previous.main, search: previous.search)
             } else {
-                _ = registerNow(main: .defaultMain, search: .defaultSearch, includeLegacyMainAlternate: true)
+                _ = registerNow(main: .defaultMain, search: .defaultSearch)
+            }
+            if capturing {
+                unregisterAll()
             }
             return error
         }
-        applied = Applied(main: main, search: search, includeLegacyMainAlternate: includeLegacyMainAlternate)
+        applied = Applied(main: main, search: search)
+        if capturing {
+            unregisterAll()
+        }
         return nil
     }
 
     func handle(id: UInt32) {
+        guard !capturing else { return }
         Task { @MainActor in
+            guard !self.capturing else { return }
             switch id {
-            case 1, 2:
+            case 1:
                 self.onMain?()
             case 3:
                 self.onSearch?()
@@ -180,13 +205,10 @@ final class HotKeyCenter: @unchecked Sendable {
         }
     }
 
-    private func registerNow(main: HotKeyCombo, search: HotKeyCombo, includeLegacyMainAlternate: Bool) -> String? {
+    private func registerNow(main: HotKeyCombo, search: HotKeyCombo) -> String? {
         unregisterAll()
         guard register(id: 1, combo: main) else {
             return "无法注册主界面快捷键（\(main.display)），可能已被系统或其他应用占用"
-        }
-        if includeLegacyMainAlternate, main != .defaultMainAlternate, search != .defaultMainAlternate {
-            _ = register(id: 2, combo: .defaultMainAlternate)
         }
         guard register(id: 3, combo: search) else {
             return "无法注册搜索快捷键（\(search.display)），可能已被系统或其他应用占用"

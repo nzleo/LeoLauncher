@@ -113,6 +113,7 @@ final class OverlayPanel: NSPanel {
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isMovable = false
+        appearance = NSAppearance(named: .darkAqua)
     }
 
     static var overlayLevel: NSWindow.Level {

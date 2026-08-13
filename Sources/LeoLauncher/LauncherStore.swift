@@ -52,10 +52,6 @@ final class LauncherStore {
     var searchHotKey: HotKeyCombo {
         state.searchHotKey ?? .defaultSearch
     }
-    var usesLegacyMainAlternate: Bool {
-        let combo = state.mainHotKey ?? .defaultMain
-        return combo == .defaultMain
-    }
     var usesCustomHotKeys: Bool {
         state.mainHotKey != nil || state.searchHotKey != nil
     }
@@ -166,12 +162,19 @@ final class LauncherStore {
         if state.version < 2 {
             state.version = 2
             state.showInDock = true
-            state.appearance = "dark"
             migrated = true
         }
         if state.version < 3 {
             state.version = 3
             state.hideAppNames = false
+            migrated = true
+        }
+        if state.version < 4 {
+            migrateFactoryHotKeysIfNeeded()
+            if state.appearance == "dark" {
+                state.appearance = "system"
+            }
+            state.version = 4
             migrated = true
         }
         lastSyncedAt = state.updatedAt
@@ -370,9 +373,6 @@ final class LauncherStore {
         if combo == searchHotKey {
             return "与搜索快捷键（\(searchHotKey.display)）冲突"
         }
-        if combo == .defaultMainAlternate, searchHotKey == .defaultMainAlternate {
-            return "与搜索快捷键冲突"
-        }
         let previous = state.mainHotKey
         state.mainHotKey = combo
         if let error = applyHotKeys() {
@@ -389,9 +389,6 @@ final class LauncherStore {
         if let error = combo.validationError { return error }
         if combo == mainHotKey {
             return "与主界面快捷键（\(mainHotKey.display)）冲突"
-        }
-        if usesLegacyMainAlternate, combo == .defaultMainAlternate {
-            return "与主界面备用快捷键 ⌥⇧ Space 冲突"
         }
         let previous = state.searchHotKey
         state.searchHotKey = combo
@@ -427,8 +424,7 @@ final class LauncherStore {
     func applyHotKeys() -> String? {
         HotKeyCenter.shared.apply(
             main: mainHotKey,
-            search: searchHotKey,
-            includeLegacyMainAlternate: usesLegacyMainAlternate
+            search: searchHotKey
         )
     }
 
@@ -584,12 +580,22 @@ final class LauncherStore {
         }
     }
 
+    private func migrateFactoryHotKeysIfNeeded() {
+        if let main = state.mainHotKey, main == .legacyDefaultMain {
+            state.mainHotKey = nil
+        }
+        if let search = state.searchHotKey, search == .legacyDefaultSearch {
+            state.searchHotKey = nil
+        }
+    }
+
     private func applyAppearance() {
         switch state.appearance {
         case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
         case "light": NSApp.appearance = NSAppearance(named: .aqua)
         default: NSApp.appearance = nil
         }
+        SettingsWindowController.shared.syncAppearance()
     }
 
     private func loadWallpaper() {

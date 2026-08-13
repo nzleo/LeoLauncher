@@ -141,7 +141,7 @@ struct SettingsView: View {
                 .font(LeoFont.title(22))
             Text("空间分区启动器")
                 .foregroundStyle(.secondary)
-            Text("版本 1.0.0")
+            Text("版本 1.0.1")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("每个应用只进一个分区。拖一下就能改。iCloud 跟着走。")
@@ -192,11 +192,6 @@ private struct ShortcutsPane: View {
                         }
                     }
                 }
-                if store.usesLegacyMainAlternate {
-                    Text("未改时也可用 ⌥⇧ Space。")
-                        .foregroundStyle(.secondary)
-                }
-
                 LabeledContent("搜索优先") {
                     HStack(spacing: 8) {
                         HotKeyRecorderButton(
@@ -228,7 +223,7 @@ private struct ShortcutsPane: View {
                     }
                 }
 
-                Text("点击快捷键，再按下新的组合。Esc 取消录制。")
+                Text("默认主界面 ⌥⇧ Space，搜索 ⌥⌃ Space。点击后按下新组合；录制时会暂时关掉全局快捷键，避免一按就弹出。系统无法区分左/右 Shift，两边都可以。Esc 取消录制。")
                     .foregroundStyle(.secondary)
             }
 
@@ -250,14 +245,32 @@ private struct ShortcutsPane: View {
         .background {
             HotKeyCaptureProbe(isActive: recording != nil, onEvent: handleCapture)
         }
+        .onChange(of: recording) { _, slot in
+            if slot != nil {
+                AppDelegate.shared?.dismissOverlayForHotKeyCapture()
+                SettingsWindowController.shared.makeKeyForCapture()
+                HotKeyCenter.shared.beginCapture()
+            } else {
+                HotKeyCenter.shared.endCapture()
+            }
+        }
         .onDisappear {
             recording = nil
+            HotKeyCenter.shared.endCapture()
         }
     }
 
     private func toggleRecording(_ slot: HotKeySlot) {
         errorText = nil
-        recording = recording == slot ? nil : slot
+        if recording == slot {
+            recording = nil
+            HotKeyCenter.shared.endCapture()
+            return
+        }
+        AppDelegate.shared?.dismissOverlayForHotKeyCapture()
+        SettingsWindowController.shared.makeKeyForCapture()
+        HotKeyCenter.shared.beginCapture()
+        recording = slot
     }
 
     private func handleCapture(_ event: NSEvent) -> Bool {

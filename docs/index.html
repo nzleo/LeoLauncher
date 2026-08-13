@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LeoLauncher — macOS 空间分区启动器</title>
-  <meta name="description" content="原生 SwiftUI 空间分区启动器：⌥ Space 呼出，一个应用只进一个分类，布局随 iCloud 走。开源、MIT。" />
+  <meta name="description" content="原生 SwiftUI 空间分区启动器：⌥⇧ Space 呼出，一个应用只进一个分类，布局随 iCloud 走。开源、MIT。" />
   <meta property="og:title" content="LeoLauncher" />
-  <meta property="og:description" content="空间分区启动器：⌥ Space 呼出，一个应用只进一个分类，布局随 iCloud 走。" />
+  <meta property="og:description" content="空间分区启动器：⌥⇧ Space 呼出，一个应用只进一个分类，布局随 iCloud 走。" />
   <meta property="og:image" content="assets/app-icon.png" />
   <link rel="icon" href="assets/app-icon.png" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260813-release" />
+  <link rel="stylesheet" href="styles.css?v=20260813-1.0.1" />
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
@@ -46,14 +46,14 @@
         <p class="eyebrow" data-i18n="hero.eyebrow">开源 · macOS 14+ · SwiftUI · MIT</p>
         <h1 class="brand-title">
           LeoLauncher
-          <span class="sub" data-i18n="hero.sub">⌥ Space 呼出的空间分区启动器</span>
+          <span class="sub" data-i18n="hero.sub">⌥⇧ Space 呼出的空间分区启动器</span>
         </h1>
         <p class="lede" data-i18n="hero.lede">一个应用只进一个分类，按 Bundle ID 记住。分类、隐藏与排序随 iCloud 走。点空白或 Esc 关掉。</p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/nzleo/LeoLauncher/releases/latest" data-i18n="hero.ctaDownload">下载最新版 DMG</a>
           <a class="btn btn-ghost" href="https://github.com/nzleo/LeoLauncher" target="_blank" rel="noopener" data-i18n="hero.ctaRepo">查看源码</a>
         </div>
-        <p class="meta" data-i18n="hero.meta">macOS 14+ · 未做 Apple 公证 · 最新 v1.0.0</p>
+        <p class="meta" data-i18n="hero.meta">macOS 14+ · 未做 Apple 公证 · 最新 v1.0.1</p>
       </div>
       <div class="hero-visual">
         <figure class="app-frame overlay-frame" aria-label="LeoLauncher overlay preview">
@@ -144,7 +144,7 @@
     <section class="section" id="why">
       <div class="section-head">
         <h2 data-i18n="why.title">它解决什么问题</h2>
-        <p data-i18n="why.desc">系统 Launchpad 越来越难用：分类弱、不好找、换机器布局不跟着走。所以自己做了一个：⌥ Space 呼出即开，一个应用只进一个分类，布局跟着 iCloud 走。</p>
+        <p data-i18n="why.desc">系统 Launchpad 越来越难用：分类弱、不好找、换机器布局不跟着走。所以自己做了一个：⌥⇧ Space 呼出即开，一个应用只进一个分类，布局跟着 iCloud 走。</p>
       </div>
       <div class="pillars">
         <article>
@@ -161,7 +161,7 @@
         </article>
         <article>
           <h3 data-i18n="why.dTitle">呼出即搜</h3>
-          <p data-i18n="why.dDesc">⌥ Space 打开后直接打字，支持拼音。点空白或 Esc 关闭。</p>
+          <p data-i18n="why.dDesc">⌥⇧ Space 打开后直接打字，支持拼音。点空白或 Esc 关闭。</p>
         </article>
       </div>
     </section>
@@ -186,11 +186,11 @@
         </article>
         <article class="feature-card">
           <h3 data-i18n="features.dTitle">触控板与 TourBox</h3>
-          <p data-i18n="features.dDesc">默认 ⌥ Space / ⌥⇧ Space 打开，⌃ Space 搜索。也可用 leolauncher://show 给 BTT 或 TourBox 绑定。</p>
+          <p data-i18n="features.dDesc">默认 ⌥⇧ Space 打开主界面，⌥⌃ Space 搜索。Esc 或点空白关闭。也可用 leolauncher://show 给 BTT 或 TourBox 绑定。</p>
         </article>
       </div>
       <div class="tag-row" aria-label="Capabilities">
-        <span class="tag" data-i18n="tag.hotkey">⌥ Space</span>
+        <span class="tag" data-i18n="tag.hotkey">⌥⇧ Space</span>
         <span class="tag" data-i18n="tag.pinyin">拼音搜索</span>
         <span class="tag" data-i18n="tag.icloud">iCloud 同步</span>
         <span class="tag" data-i18n="tag.unsorted">待分</span>
@@ -216,7 +216,7 @@
           <p data-i18n-html="install.2dHtml">未做 Apple 公证，会被 Gatekeeper 拦。按住 Control 点击 App → 打开 → 再点打开。或：<code>xattr -dr com.apple.quarantine /Applications/LeoLauncher.app</code></p>
         </li>
         <li>
-          <strong data-i18n="install.3t">按 ⌥ Space 呼出</strong>
+          <strong data-i18n="install.3t">按 ⌥⇧ Space 呼出</strong>
           <p data-i18n="install.3d">弹出后直接打字搜索，支持拼音。点空白或 Esc 关闭。快捷键可在设置里改。</p>
         </li>
       </ol>
@@ -261,12 +261,12 @@
     <section class="section" id="download">
       <div class="download-panel">
         <h2 data-i18n="download.title">下载并开始用</h2>
-        <p data-i18n="download.desc">免费开源。拖进「应用程序」，Control 点击打开，然后按 ⌥ Space。</p>
+        <p data-i18n="download.desc">免费开源。拖进「应用程序」，Control 点击打开，然后按 ⌥⇧ Space。</p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/nzleo/LeoLauncher/releases/latest" data-i18n="download.cta">下载 LeoLauncher DMG</a>
           <a class="btn btn-ghost" href="https://github.com/nzleo/LeoLauncher" target="_blank" rel="noopener" data-i18n="download.repo">GitHub 源码</a>
         </div>
-        <p class="meta" data-i18n="download.meta">v1.0.0 · MIT · macOS 14+</p>
+        <p class="meta" data-i18n="download.meta">v1.0.1 · MIT · macOS 14+</p>
       </div>
     </section>
 
@@ -279,7 +279,7 @@
         <div class="series-card current">
           <p class="series-kicker" data-i18n="series.current">当前页面</p>
           <h3>LeoLauncher</h3>
-          <p data-i18n="series.launcherDesc">空间分区启动器：⌥ Space 呼出，一个应用只进一个分类，布局随 iCloud 走。</p>
+          <p data-i18n="series.launcherDesc">空间分区启动器：⌥⇧ Space 呼出，一个应用只进一个分类，布局随 iCloud 走。</p>
         </div>
         <a class="series-card" href="https://nzleo.github.io/LeoMacFanControl/" target="_blank" rel="noopener">
           <p class="series-kicker" data-i18n="series.other">其他作品</p>
@@ -310,6 +310,6 @@
     </div>
   </footer>
 
-  <script src="i18n.js?v=20260813-release"></script>
+  <script src="i18n.js?v=20260813-1.0.1"></script>
 </body>
 </html>
