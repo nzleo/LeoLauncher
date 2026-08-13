@@ -1,0 +1,7 @@
+.build/
+dist/
+.DS_Store
+Packaging/AppIcon.iconset/
+*.swp
+xcuserdata/
+.idea/
