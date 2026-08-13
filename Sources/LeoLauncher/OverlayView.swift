@@ -229,7 +229,7 @@ struct OverlayView: View {
                     AppTile(
                         app: app,
                         size: store.iconSize,
-                        hideName: true,
+                        hideName: store.hideAppNames,
                         selected: store.selectedID == app.id,
                         hovered: hoveredID == app.id,
                         onLaunch: { store.launch(app) },
@@ -510,6 +510,7 @@ struct IconFlow: View {
                     onHover: { onHover($0 ? app.id : nil) }
                 )
                 .draggable(app.bundleID)
+                .zIndex(hoveredID == app.id ? 10 : 0)
                 .contextMenu {
                     Button("打开") { onLaunch(app) }
                     Button("在 Finder 中显示") { LauncherStore.shared.reveal(app) }
@@ -543,12 +544,25 @@ struct AppTile: View {
     var body: some View {
         Button(action: onLaunch) {
             VStack(spacing: 5) {
-                Image(nsImage: IconCache.shared.image(for: app.url, pointSize: size))
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: size, height: size)
-                    .scaleEffect(hovered || selected ? 1.06 : 1)
-                    .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                ZStack(alignment: .bottom) {
+                    Image(nsImage: IconCache.shared.image(for: app.url, pointSize: size))
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: size, height: size)
+                        .scaleEffect(hovered || selected ? 1.06 : 1)
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                    if hideName, hovered || selected {
+                        Text(app.name)
+                            .font(LeoFont.body(10))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule(style: .continuous).fill(.black.opacity(0.78)))
+                            .offset(y: 8)
+                    }
+                }
+                .zIndex(hovered || selected ? 1 : 0)
                 if !hideName {
                     Text(app.name)
                         .font(LeoFont.body(10))
@@ -559,6 +573,7 @@ struct AppTile: View {
                 }
             }
             .padding(5)
+            .padding(.bottom, hideName && (hovered || selected) ? 10 : 0)
             .background {
                 if selected || hovered {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)

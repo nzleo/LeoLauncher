@@ -16,6 +16,7 @@ enum AppCategory: String, Codable, CaseIterable, Identifiable, Sendable {
     case design
     case life
     case tasks
+    case unsorted
 
     var id: String { rawValue }
 
@@ -34,6 +35,7 @@ enum AppCategory: String, Codable, CaseIterable, Identifiable, Sendable {
         case .design: "设计"
         case .life: "生活"
         case .tasks: "任务"
+        case .unsorted: "待分"
         }
     }
 
@@ -52,6 +54,7 @@ enum AppCategory: String, Codable, CaseIterable, Identifiable, Sendable {
         case .design: "paintbrush.pointed"
         case .life: "leaf"
         case .tasks: "checklist"
+        case .unsorted: "questionmark.square"
         }
     }
 
@@ -70,12 +73,13 @@ enum AppCategory: String, Codable, CaseIterable, Identifiable, Sendable {
         case .design: Color(red: 0.96, green: 0.25, blue: 0.37)
         case .life: Color(red: 0.18, green: 0.83, blue: 0.75)
         case .tasks: Color(red: 0.64, green: 0.90, blue: 0.21)
+        case .unsorted: Color(red: 0.82, green: 0.58, blue: 0.34)
         }
     }
 
     static let colorOrder: [AppCategory] = [
         .design, .photo, .media, .notes, .tasks, .learn, .office,
-        .life, .browser, .dev, .chat, .ai, .system
+        .life, .browser, .dev, .chat, .ai, .system, .unsorted
     ]
 
     var colorRank: Int {
@@ -84,7 +88,7 @@ enum AppCategory: String, Codable, CaseIterable, Identifiable, Sendable {
 
     static let boardOrder: [AppCategory] = [
         .ai, .dev, .office, .chat, .media, .system,
-        .tasks, .browser, .notes, .photo, .learn, .design, .life
+        .tasks, .browser, .notes, .photo, .learn, .design, .life, .unsorted
     ]
 }
 
@@ -114,6 +118,12 @@ struct CategoryOverride: Codable, Hashable, Sendable {
     var updatedAt: Date
 }
 
+struct InferredCategory: Codable, Hashable, Sendable {
+    var category: AppCategory
+    var source: ClassificationSource
+    var updatedAt: Date
+}
+
 struct PersistedState: Codable, Equatable, Sendable {
     var version: Int
     var updatedAt: Date
@@ -135,14 +145,15 @@ struct PersistedState: Codable, Equatable, Sendable {
     var quoteMode: String?
     var quotePlacement: String?
     var customGreeting: String?
+    var inferences: [String: InferredCategory]?
 
     static let `default` = PersistedState(
-        version: 2,
+        version: 3,
         updatedAt: Date(),
         overrides: [:],
         hiddenBundleIDs: [],
         showObscureSystemApps: false,
-        hideAppNames: true,
+        hideAppNames: false,
         iconSize: 56,
         categoryOrder: AppCategory.boardOrder.map(\.rawValue),
         launchCounts: [:],
@@ -156,6 +167,7 @@ struct PersistedState: Codable, Equatable, Sendable {
         wallpaperOpacity: 0.55,
         quoteMode: QuoteMode.both.rawValue,
         quotePlacement: QuotePlacement.bottom.rawValue,
-        customGreeting: nil
+        customGreeting: nil,
+        inferences: [:]
     )
 }

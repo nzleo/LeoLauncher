@@ -5,7 +5,8 @@ enum Classifier {
         bundleID: String,
         name: String,
         systemCategory: String?,
-        override: CategoryOverride?
+        override: CategoryOverride?,
+        inferred: InferredCategory? = nil
     ) -> (AppCategory, ClassificationSource) {
         if let override {
             return (override.category, .user)
@@ -20,11 +21,15 @@ enum Classifier {
             return (category, .catalog)
         }
 
+        if let inferred {
+            return (inferred.category, inferred.source)
+        }
+
         if let category = heuristic(name: normalized, systemCategory: systemCategory, bundleID: bundleID) {
             return (category, .heuristic)
         }
 
-        return (.system, .fallback)
+        return (.unsorted, .fallback)
     }
 
     static func heuristic(name: String, systemCategory: String?, bundleID: String) -> AppCategory? {

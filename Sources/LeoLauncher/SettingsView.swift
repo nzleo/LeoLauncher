@@ -27,10 +27,16 @@ struct SettingsView: View {
                 get: { store.state.showInDock },
                 set: { store.updateShowInDock($0) }
             ))
-            Toggle("隐藏应用名称", isOn: Binding(
+            Picker("应用标签", selection: Binding(
                 get: { store.state.hideAppNames },
                 set: { store.updateHideNames($0) }
-            ))
+            )) {
+                Text("只显示图标").tag(true)
+                Text("显示图标和名字").tag(false)
+            }
+            .pickerStyle(.segmented)
+            Text("只显示图标时，鼠标移到图标上仍会看到名字。")
+                .foregroundStyle(.secondary)
             Toggle("显示不常用系统工具", isOn: Binding(
                 get: { store.state.showObscureSystemApps },
                 set: { store.updateShowObscure($0) }
@@ -72,6 +78,11 @@ struct SettingsView: View {
 
     private var categories: some View {
         List {
+            Section {
+                Text("认不出的应用会进「待分」。拖到别的分区后，按 Bundle ID 记住，并随 iCloud 同步。你的分法永远优先于默认规则。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
             ForEach(store.grouped, id: \.0) { category, apps in
                 Section(category.title) {
                     ForEach(apps) { app in
@@ -126,7 +137,7 @@ struct SettingsView: View {
                 store.reclassifyUnknown()
             }
             .disabled(store.isClassifying)
-            Text("分类按 Bundle ID 存储，不会因为换机器、换路径而丢失。两台 Mac 登录同一 iCloud 即可共用分区。")
+            Text("分类顺序：你拖过的 > 内置目录 > App Store 类型 / 本机智能（有才用）> 名字规则。认不出的进「待分」，不会偷偷塞进「系统」。")
                 .foregroundStyle(.secondary)
         }
         .formStyle(.grouped)
@@ -264,7 +275,7 @@ private struct AppearancePane: View {
                         Text("仅英文").tag(QuoteMode.english)
                     }
                     .pickerStyle(.segmented)
-                    Text("显示在底部分类栏里，不占应用区域。每次打开换一句。")
+                    Text("显示在底部分类栏里，不占应用区域。内置 \(QuoteBook.all.count) 句中英名言，存在软件里本地轮换，不联网，也没有云端文库。")
                         .foregroundStyle(.secondary)
                 }
             }

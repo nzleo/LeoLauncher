@@ -149,10 +149,17 @@ final class LauncherStore {
     func boot() async {
         iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
         state = await CloudStore.shared.load()
+        var migrated = false
         if state.version < 2 {
             state.version = 2
             state.showInDock = true
             state.appearance = "dark"
+            migrated = true
+        }
+        if state.version < 3 {
+            state.version = 3
+            state.hideAppNames = false
+            migrated = true
         }
         lastSyncedAt = state.updatedAt
         applyAppearance()
@@ -162,6 +169,9 @@ final class LauncherStore {
         Task { await self.enrichUnknownApps() }
         applyDockPolicy()
         applyLoginItem()
+        if migrated {
+            persistNow()
+        }
     }
 
     func refreshApps() {
@@ -172,7 +182,8 @@ final class LauncherStore {
                 bundleID: item.bundleID,
                 name: item.name,
                 systemCategory: item.systemCategory,
-                override: overrides[item.bundleID]
+                override: overrides[item.bundleID],
+                inferred: state.inferences?[item.bundleID]
             )
             return AppRecord(
                 bundleID: item.bundleID,
@@ -406,7 +417,7 @@ final class LauncherStore {
     }
 
     private func enrichUnknownApps() async {
-        let unknown = apps.filter { $0.source == .fallback || $0.source == .heuristic }
+        let unknown = apps.filter { $0.source == .fallback || $0.category == .unsorted }
         guard !unknown.isEmpty else { return }
         await MainActor.run { isClassifying = true }
         defer { Task { @MainActor in isClassifying = false } }
@@ -415,16 +426,22 @@ final class LauncherStore {
             if state.overrides[app.bundleID] != nil { continue }
             if Catalog.byBundle[app.bundleID] != nil { continue }
             if let genre = await ITunesLookup.genre(for: app.name),
-               let category = Classifier.mapITunesGenre(genre) {
+               let category = Classifier.mapITunesGenre(genre),
+               category != .unsorted {
                 await MainActor.run {
-                    self.state.overrides[app.bundleID] = CategoryOverride(category: category, updatedAt: Date())
+                    var inferences = self.state.inferences ?? [:]
+                    inferences[app.bundleID] = InferredCategory(category: category, source: .itunes, updatedAt: Date())
+                    self.state.inferences = inferences
                     self.refreshApps()
                 }
                 continue
             }
-            if let category = await LanguageClassifier.classify(name: app.name, bundleID: app.bundleID) {
+            if let category = await LanguageClassifier.classify(name: app.name, bundleID: app.bundleID),
+               category != .unsorted {
                 await MainActor.run {
-                    self.state.overrides[app.bundleID] = CategoryOverride(category: category, updatedAt: Date())
+                    var inferences = self.state.inferences ?? [:]
+                    inferences[app.bundleID] = InferredCategory(category: category, source: .model, updatedAt: Date())
+                    self.state.inferences = inferences
                     self.refreshApps()
                 }
             }
