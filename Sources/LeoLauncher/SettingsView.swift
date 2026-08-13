@@ -60,7 +60,7 @@ struct SettingsView: View {
                 Text("浅色").tag("light")
             }
             .pickerStyle(.segmented)
-            Text("启动器使用液态玻璃分区，而不是整屏平铺。每个应用只出现在一个区域，拖到别的分区即可改分类。")
+            Text("三列瀑布流，栏目等宽、自上而下填满，不再用大小不一的玻璃块。拖到分区即可改分类。")
                 .foregroundStyle(.secondary)
         }
         .formStyle(.grouped)

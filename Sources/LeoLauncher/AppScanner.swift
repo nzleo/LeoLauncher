@@ -33,6 +33,14 @@ enum AppScanner {
             }
         }
 
+        let selfURL = Bundle.main.bundleURL.resolvingSymlinksInPath()
+        if selfURL.pathExtension == "app", let raw = inspect(selfURL) {
+            let key = raw.bundleID.isEmpty ? raw.url.path : raw.bundleID
+            if !seen.contains(key) {
+                result.append(raw)
+            }
+        }
+
         return result.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 

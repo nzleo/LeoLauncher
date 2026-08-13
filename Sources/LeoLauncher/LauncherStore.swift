@@ -76,6 +76,11 @@ final class LauncherStore {
     func boot() async {
         iCloudAvailable = FileManager.default.ubiquityIdentityToken != nil
         state = await CloudStore.shared.load()
+        if state.version < 2 {
+            state.version = 2
+            state.showInDock = true
+            state.appearance = "dark"
+        }
         lastSyncedAt = state.updatedAt
         applyAppearance()
         refreshApps()

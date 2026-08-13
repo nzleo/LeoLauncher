@@ -120,7 +120,7 @@ struct PersistedState: Codable, Equatable, Sendable {
     var showInDock: Bool
 
     static let `default` = PersistedState(
-        version: 1,
+        version: 2,
         updatedAt: Date(),
         overrides: [:],
         hiddenBundleIDs: [],
@@ -130,24 +130,8 @@ struct PersistedState: Codable, Equatable, Sendable {
         categoryOrder: AppCategory.boardOrder.map(\.rawValue),
         launchCounts: [:],
         lastOpened: [:],
-        appearance: "system",
+        appearance: "dark",
         launchAtLogin: false,
-        showInDock: false
+        showInDock: true
     )
-}
-
-struct PackedZone: Identifiable, Hashable {
-    var id: String { category.rawValue }
-    var category: AppCategory
-    var apps: [AppRecord]
-    var col: Int
-    var row: Int
-    var colSpan: Int
-    var rowSpan: Int
-    var rect: CGRect
-}
-
-struct UsageSnapshot: Hashable {
-    var count: Int
-    var lastOpened: Date?
 }

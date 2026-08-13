@@ -78,7 +78,7 @@ final class OverlayPanel: NSPanel {
         backgroundColor = .clear
         hasShadow = false
         level = .popUpMenu
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isFloatingPanel = true
         becomesKeyOnlyIfNeeded = false
         hidesOnDeactivate = false

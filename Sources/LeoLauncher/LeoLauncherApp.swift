@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let overlay = OverlayController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
         overlay.bind(store: LauncherStore.shared)
         HotKeyCenter.shared.onMain = { [weak self] in
             self?.overlay.toggle()
