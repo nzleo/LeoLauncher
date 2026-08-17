@@ -68,11 +68,20 @@ final class LauncherStore {
     }
 
     @ObservationIgnored
+    var onDismissOverlay: (() -> Void)?
+    @ObservationIgnored
+    private var suppressReopenUntil: Date?
+    @ObservationIgnored
     private var persistTask: Task<Void, Never>?
     @ObservationIgnored
     private var remoteTask: Task<Void, Never>?
     @ObservationIgnored
     private var folderWatcher: AppFolderWatcher?
+
+    var shouldSuppressReopen: Bool {
+        guard let until = suppressReopenUntil else { return false }
+        return Date() < until
+    }
 
     var iconSize: CGFloat { CGFloat(state.iconSize) }
     var hideAppNames: Bool { state.hideAppNames }
@@ -247,6 +256,12 @@ final class LauncherStore {
         query = ""
     }
 
+    func dismissOverlay() {
+        suppressReopenUntil = Date().addingTimeInterval(1.2)
+        hide()
+        onDismissOverlay?()
+    }
+
     func clearRecents() {
         state.lastOpened = [:]
         state.recentsClearedAt = Date()
@@ -257,15 +272,15 @@ final class LauncherStore {
         state.launchCounts[app.bundleID, default: 0] += 1
         state.lastOpened[app.bundleID] = Date()
         persistSoon()
+        dismissOverlay()
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: app.url, configuration: configuration) { _, _ in }
-        hide()
     }
 
     func reveal(_ app: AppRecord) {
+        dismissOverlay()
         NSWorkspace.shared.activateFileViewerSelecting([app.url])
-        hide()
     }
 
     func reassign(_ app: AppRecord, to category: AppCategory) {

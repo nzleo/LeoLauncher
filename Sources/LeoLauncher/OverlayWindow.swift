@@ -6,9 +6,13 @@ import SwiftUI
 final class OverlayController {
     private var panel: OverlayPanel?
     private var store: LauncherStore?
+    private var presentationID = 0
 
     func bind(store: LauncherStore) {
         self.store = store
+        store.onDismissOverlay = { [weak self] in
+            self?.hide(animated: false)
+        }
         if panel == nil {
             let panel = OverlayPanel()
             let root = OverlayRootView(store: store) { [weak self] in
@@ -37,6 +41,8 @@ final class OverlayController {
 
     func show(focusSearch: Bool = false) {
         guard let panel, let screen = screenForMouse() else { return }
+        presentationID += 1
+        let token = presentationID
         store?.refreshApps()
         store?.isVisible = true
         store?.rotateQuote()
@@ -55,20 +61,24 @@ final class OverlayController {
             panel.animator().alphaValue = 1
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            self?.store?.requestSearchFocus()
-            self?.panel?.makeKey()
+            guard let self, self.presentationID == token, self.store?.isVisible == true else { return }
+            self.store?.requestSearchFocus()
+            self.panel?.makeKey()
         }
     }
 
     func hide(animated: Bool = true) {
         guard let panel else { return }
+        presentationID += 1
+        let token = presentationID
         store?.hide()
         if animated, panel.isVisible {
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.1
                 panel.animator().alphaValue = 0
-            }, completionHandler: {
+            }, completionHandler: { [weak self] in
                 Task { @MainActor in
+                    guard let self, self.presentationID == token else { return }
                     panel.orderOut(nil)
                     panel.alphaValue = 1
                 }

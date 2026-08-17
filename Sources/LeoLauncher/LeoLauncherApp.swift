@@ -63,6 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if LauncherStore.shared.shouldSuppressReopen {
+            return false
+        }
         overlay.show()
         return false
     }
